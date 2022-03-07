@@ -1,7 +1,7 @@
 import type { NextPage } from 'next';
 import Head from 'next/head';
 import { useState } from 'react';
-import { Container, Box, Stack, Typography, Button } from '@mui/material';
+import { Container, Box, Stack, Typography, Button, Link } from '@mui/material';
 // import Navbar from '../components/Navbar';
 import { ShareModal } from '../components/ShareModal';
 
@@ -19,7 +19,7 @@ const Home: NextPage = () => {
       <Container>
         {/* <Navbar /> */}
         <Box component="main" sx={{ mt: 28, p: 2, border: 1, borderColor: 'text.secondary' }}>
-          <Typography component="h1" mb={4}>
+          <Typography component="h1" mb={4} fontSize={20}>
             Decentralized and Encrypted Collaborative Knowledge
           </Typography>
           <Stack spacing={2} sx={{ width: '15%' }}>
@@ -29,6 +29,9 @@ const Home: NextPage = () => {
             <Button variant="outlined" color="inherit" onClick={() => setOpen(true)}>
               Open Modal
             </Button>
+            <Link href="/deck.html" color="inherit">
+              DECK
+            </Link>
           </Stack>
           {open && (
             <ShareModal
