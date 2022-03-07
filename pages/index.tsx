@@ -1,10 +1,9 @@
 import type { NextPage } from 'next';
 import Head from 'next/head';
 import { useState } from 'react';
+import { Container, Box, Stack, Typography, Button } from '@mui/material';
 // import Navbar from '../components/Navbar';
-// import ShareModal from '../components/ShareModalTS/ShareModal';
 import { ShareModal } from '../components/ShareModal';
-import Button from '../components/Button';
 
 const Home: NextPage = () => {
   const [open, setOpen] = useState<boolean>(false);
@@ -17,13 +16,20 @@ const Home: NextPage = () => {
         <meta name="description" content="Decentralized and Encrypted Collaborative Knowledge" />
         <link rel="icon" href="/favicon.ico" />
       </Head>
-      {/* relative */}
-      <div className="container">
+      <Container>
         {/* <Navbar /> */}
-        <main className="border border-gray-500 p-4 mt-48">
-          <h1 className="mb-12">Decentralized and Encrypted Collaborative Knowledge</h1>
-          {/* <button>Connect wallet</button> */}
-          <Button onClick={() => setOpen(true)}>Open Modal</Button>
+        <Box component="main" sx={{ mt: 28, p: 2, border: 1, borderColor: 'text.secondary' }}>
+          <Typography component="h1" mb={4}>
+            Decentralized and Encrypted Collaborative Knowledge
+          </Typography>
+          <Stack spacing={2} sx={{ width: '15%' }}>
+            <Button variant="outlined" color="inherit">
+              Connect wallet
+            </Button>
+            <Button variant="outlined" color="inherit" onClick={() => setOpen(true)}>
+              Open Modal
+            </Button>
+          </Stack>
           {open && (
             <ShareModal
               onClose={() => setOpen(false)}
@@ -43,8 +49,8 @@ const Home: NextPage = () => {
               <pre>{JSON.stringify(selectedConditions, null, 2)}</pre>
             </>
           ) : null}
-        </main>
-      </div>
+        </Box>
+      </Container>
     </>
   );
 };

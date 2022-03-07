@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { ethers } from 'ethers';
 import LitJsSdk from 'lit-js-sdk';
-import { IconButton, Radio, RadioGroup, FormControlLabel, FormControl, FormLabel } from '@mui/material';
+import { Box, IconButton, Radio, RadioGroup, FormControlLabel, FormControl, FormLabel } from '@mui/material';
 import { Close } from '@mui/icons-material';
 
 import InputWrapper from '../InputWrapper';
@@ -188,26 +188,23 @@ const SelectTokens = ({ setActiveStep, onAccessControlConditionsSelected, tokenL
     setContractType(event.target.value);
   };
 
-  console.log('chain', chain);
-
   return (
-    <div>
-      <h4 className="text-lg">Which wallet should be able to access this asset?</h4>
-      <div className="mt-4">
-        <div>
-          <div>
-            <label>Select blockchain to check requirements against:</label>
-            <ChainSelector chain={chain} setChain={setChain} />
-          </div>
-        </div>
-        <div className="mt-4">
+    <Box>
+      <h3>Which wallet should be able to access this asset?</h3>
+      <Box mt={2}>
+        <Box>
+          <label>Select blockchain to check requirements against:</label>
+          <ChainSelector chain={chain} setChain={setChain} />
+        </Box>
+
+        <Box mt={2}>
           <label>Select token/NFT or enter contract address: </label>
-          <div className="flex items-center">
+          <Box sx={{ display: 'flex', alignItems: 'center' }}>
             {(!contractAddress || !contractAddress.length) && !selectedToken && (
-              <span className="flex items-center">
+              <Box sx={{ display: 'flex', alignItems: 'center' }}>
                 <TokenSelect tokenList={tokenList} onSelect={setSelectedToken} />
-                <div className="mx-4">OR</div>
-              </span>
+                <Box mx={2}>OR</Box>
+              </Box>
             )}
             {!selectedToken && (
               <InputWrapper
@@ -225,24 +222,30 @@ const SelectTokens = ({ setActiveStep, onAccessControlConditionsSelected, tokenL
               </IconButton>
             )}
             {!!selectedToken && !contractAddress && !contractAddress.length && (
-              <div className="flex items-center border pl-2">
-                <div
-                  className="w-4 h-4 rounded-full bg-no-repeat bg-contain bg-center mr-1"
-                  style={{
+              <Box sx={{ display: 'flex', alignItems: 'center', border: 1, borderColor: 'text.secondary', paddingLeft: 1 }}>
+                <Box
+                  sx={{
+                    width: 16,
+                    height: 16,
+                    borderRadius: '50%',
+                    backgroundRepeat: 'no-repeat',
+                    backgroundSize: 'contain',
+                    backgroundPosition: 'center',
                     backgroundImage: `url(${selectedToken.logo})` ?? undefined,
+                    marginRight: 1,
                   }}
                 />
-                <div className="mr-4">{selectedToken.symbol}</div>
+                <Box mr={2}>{selectedToken.symbol}</Box>
                 <IconButton size={'small'} onClick={() => setSelectedToken(null)}>
                   <Close />
                 </IconButton>
-              </div>
+              </Box>
             )}
-          </div>
-        </div>
+          </Box>
+        </Box>
 
         {!selectedToken && !!contractAddress && contractAddress.length && (
-          <div className="mt-4">
+          <Box mt={2}>
             <FormControl>
               <FormLabel id="demo-row-radio-buttons-group-label">Token contract type</FormLabel>
               <RadioGroup
@@ -279,10 +282,10 @@ const SelectTokens = ({ setActiveStep, onAccessControlConditionsSelected, tokenL
               />
               <Typography>ERC721 (NFT)</Typography>
             </Stack> */}
-          </div>
+          </Box>
         )}
 
-        <div className="mt-4">
+        <Box mt={2}>
           <InputWrapper
             value={amount}
             label="How many tokens does the wallet need to own?"
@@ -291,8 +294,8 @@ const SelectTokens = ({ setActiveStep, onAccessControlConditionsSelected, tokenL
             size="m"
             handleChange={value => setAmount(value)}
           />
-        </div>
-      </div>
+        </Box>
+      </Box>
 
       <Navigation
         backward={{ onClick: () => setActiveStep('ableToAccess') }}
@@ -303,7 +306,7 @@ const SelectTokens = ({ setActiveStep, onAccessControlConditionsSelected, tokenL
           disabled: !amount || !(selectedToken || contractAddress) || !chain,
         }}
       />
-    </div>
+    </Box>
   );
 };
 

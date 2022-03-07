@@ -1,22 +1,23 @@
 import React, { useEffect } from 'react';
+import { Box, SvgIcon, Link } from '@mui/material';
 
-const AccessCreated = ({ setActiveStep, copyToClipboard, setRequirementCreated, copyLinkText }) => {
+const AccessCreated = ({ copyToClipboard, setRequirementCreated, copyLinkText }) => {
   useEffect(() => {
     setRequirementCreated(true);
   }, []);
 
   return (
-    <div>
-      <div>
-        <h4 className="text-xl">Your requirements have been successfully added to the Lit Protocol!</h4>
-      </div>
-      <svg
-        className="ml-12 h-20 w-16 text-center"
+    <Box>
+      <Box typography="subtitle" fontSize={20}>
+        Your requirements have been successfully added to the Lit Protocol!
+      </Box>
+      <SvgIcon
         width="66"
         height="78"
         viewBox="0 0 66 78"
         fill="none"
         xmlns="http://www.w3.org/2000/svg"
+        sx={{ marginLeft: 4, marginTop: 2, height: 60, width: 48, textAlign: 'center' }}
       >
         <path
           opacity="0.39"
@@ -39,19 +40,17 @@ const AccessCreated = ({ setActiveStep, copyToClipboard, setRequirementCreated, 
           d="M31.1613 56.3029L24.1901 50.4535L22.8892 52.0039L31.4093 59.1531L43.108 45.2111L41.559 43.9114L31.1613 56.3029Z"
           fill="#42974A"
         />
-      </svg>
+      </SvgIcon>
 
-      <div className="mt-8 flex flex-wrap justify-center w-full">
-        <div className="m-2 w-full" onClick={copyToClipboard}>
-          <div className="">
-            <h5>
-              <a className="underline cursor-pointer">Click to copy link</a> <br />{' '}
-              {copyLinkText || 'Only authorized users will be granted access.'}
-            </h5>
-          </div>
-        </div>
-      </div>
-    </div>
+      <Box sx={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'center', width: 1 }}>
+        <Box sx={{ margin: 2, width: 1 }} onClick={copyToClipboard}>
+          <Link component="button" color="inherit" onClick={copyToClipboard}>
+            Click to copy link
+          </Link>
+          <Box>{copyLinkText || 'Only authorized users will be granted access.'}</Box>
+        </Box>
+      </Box>
+    </Box>
   );
 };
 

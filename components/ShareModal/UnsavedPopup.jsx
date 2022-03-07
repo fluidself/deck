@@ -20,14 +20,14 @@ const UnsavedPopup = props => {
         }}
       >
         You have unsaved changes. Are you sure you want to exit?
-        <div className="flex justify-between mt-4">
+        <Box sx={{ display: 'flex', justifyContent: 'space-between', marginTop: 2 }}>
           <Button variant="outlined" color="inherit" onClick={onCancel}>
             No, keep editing
           </Button>
           <Button variant="outlined" color="inherit" onClick={onClose}>
             Yes, exit
           </Button>
-        </div>
+        </Box>
       </Box>
     </Modal>
   );

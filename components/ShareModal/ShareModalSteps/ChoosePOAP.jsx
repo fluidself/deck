@@ -1,7 +1,5 @@
 import React, { useState } from 'react';
-import Autocomplete from '@mui/material/Autocomplete';
-import TextField from '@mui/material/TextField';
-
+import { Box, Autocomplete, TextField } from '@mui/material';
 import InputWrapper from '../InputWrapper';
 import Navigation from '../Navigation';
 
@@ -53,9 +51,9 @@ const DAOMembers = ({ setActiveStep, onAccessControlConditionsSelected }) => {
   };
 
   return (
-    <div>
-      <h4>Which POAP should be able to access this asset?</h4>
-      <div className="mt-8 max-w-[396px]">
+    <Box>
+      <h3>Which POAP should be able to access this asset?</h3>
+      <Box sx={{ marginTop: 4, maxWidth: 400 }}>
         <InputWrapper
           value={POAPName}
           label="POAP Name"
@@ -64,7 +62,7 @@ const DAOMembers = ({ setActiveStep, onAccessControlConditionsSelected }) => {
           size="m"
           handleChange={value => setPOAPName(value)}
         />
-        <div className="mt-4">
+        <Box mt={2}>
           <label>Match Conditions</label>
           {/* <Select
             classNamePrefix="react-select"
@@ -80,8 +78,8 @@ const DAOMembers = ({ setActiveStep, onAccessControlConditionsSelected }) => {
             onChange={value => setMatchCondition(value)}
             renderInput={params => <TextField {...params} label="Select one..." />}
           />
-        </div>
-      </div>
+        </Box>
+      </Box>
 
       <Navigation
         backward={{ onClick: () => setActiveStep('ableToAccess') }}
@@ -92,7 +90,7 @@ const DAOMembers = ({ setActiveStep, onAccessControlConditionsSelected }) => {
           disabled: !POAPName || !matchCondition,
         }}
       />
-    </div>
+    </Box>
   );
 };
 

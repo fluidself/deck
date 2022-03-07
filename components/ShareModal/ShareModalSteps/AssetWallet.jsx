@@ -1,6 +1,5 @@
 import React, { useState, useMemo } from 'react';
-import Autocomplete from '@mui/material/Autocomplete';
-import TextField from '@mui/material/TextField';
+import { Box, Autocomplete, Link, TextField } from '@mui/material';
 
 import InputWrapper from '../InputWrapper';
 import ChainSelector from '../ChainSelector';
@@ -39,20 +38,26 @@ const AssetWallet = ({ setActiveStep, onAccessControlConditionsSelected, tokenLi
   };
 
   return (
-    <div>
-      <div>
-        <h4>Which asset does a wallet need to own to access this?</h4>
-        <a className="underline cursor-pointer hover:text-offWhite" onClick={() => setActiveStep('whichWallet')}>
+    <Box>
+      <Box>
+        <h3>Which asset does a wallet need to own to access this?</h3>
+        <Link
+          component="button"
+          color="inherit"
+          fontFamily="inherit"
+          fontSize="inherit"
+          onClick={() => setActiveStep('whichWallet')}
+        >
           Grant Access to Wallet or Blockchain Domain
-        </a>
-      </div>
-      <div className="mt-4">
-        <div className="mt-4">
-          <label className="mt-4">Select blockchain</label>
+        </Link>
+      </Box>
+      <Box mt={2}>
+        <Box mt={2}>
+          <label>Select blockchain</label>
           <ChainSelector chain={chain} setChain={setChain} />
-        </div>
-        <div className="mt-4">
-          <label className="mt-4">Select token or enter contract address</label>
+        </Box>
+        <Box mt={2}>
+          <label>Select token or enter contract address</label>
           {/* <Creatable
             isClearable
             isSearchable
@@ -65,16 +70,16 @@ const AssetWallet = ({ setActiveStep, onAccessControlConditionsSelected, tokenLi
             onChange={value => setSelectedToken(value)}
             renderInput={params => <TextField {...params} />}
           />
-        </div>
+        </Box>
         <InputWrapper
           value={tokenId}
-          className="mt-4"
           label="Add Token ID"
           id="tokenId"
           size="m"
           handleChange={value => setTokenId(value)}
+          mt={2}
         />
-      </div>
+      </Box>
       <Navigation
         backward={{ onClick: () => setActiveStep('ableToAccess') }}
         forward={{
@@ -84,7 +89,7 @@ const AssetWallet = ({ setActiveStep, onAccessControlConditionsSelected, tokenLi
           disabled: !tokenId || !chain,
         }}
       />
-    </div>
+    </Box>
   );
 };
 

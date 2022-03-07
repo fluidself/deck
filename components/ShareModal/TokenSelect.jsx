@@ -13,8 +13,8 @@ const Option = ({ children, data: { label, logo, symbol }, ...props }) => {
           style={{ backgroundImage: logo ? `url(${logo})` : undefined }}
         />
         <div>
-          <div className="">{label}</div>
-          <div className="">{symbol}</div>
+          <div>{label}</div>
+          <div>{symbol}</div>
         </div>
       </div>
     </components.Option>
@@ -46,7 +46,7 @@ const TOP_LIST = [
 
 const TokenSelect = props => {
   const { tokenList, onSelect } = props;
-  console.log(tokenList);
+  // console.log(tokenList);
 
   const [modalIsOpen, setModalIsOpen] = useState(false);
   const [selectedToken, setSelectedToken] = useState(null);
@@ -75,8 +75,8 @@ const TokenSelect = props => {
   };
 
   return (
-    <div>
-      <Button size={'large'} className="py-3" variant="outlined" color="inherit" onClick={() => setModalIsOpen(true)}>
+    <Box>
+      <Button size={'large'} sx={{ paddingY: 1.5 }} variant="outlined" color="inherit" onClick={() => setModalIsOpen(true)}>
         Search for a token/NFT
       </Button>
 
@@ -94,35 +94,46 @@ const TokenSelect = props => {
           }}
         >
           <Typography variant="div" id="token-select-modal-description" sx={{ mt: 2, width: 400 }}>
-            <div>
-              <label className="mb-2 block">Top Tokens/NFTS</label>
-              <div className="flex mb-2">
+            <Box>
+              <label>Top Tokens/NFTS</label>
+              <Box sx={{ display: 'flex', marginY: 1 }}>
                 {TOP_LIST.map((t, i) => (
-                  <div
-                    className={`px-2 py-px flex items-center mr-2 border cursor-pointer ${
-                      t && t['symbol'] && selectedToken && t['symbol'] === selectedToken['symbol']
-                        ? 'border-2 bg-white text-black'
-                        : 'my-px mr-2 ml-px'
-                    }`}
+                  <Box
                     key={t.symbol}
-                    onClick={e => {
-                      setSelectedToken(t);
+                    onClick={() => setSelectedToken(t)}
+                    sx={{
+                      paddingX: 1,
+                      paddingY: '0.5px',
+                      marginRight: 2,
+                      display: 'flex',
+                      alignItems: 'center',
+                      cursor: 'pointer',
+                      border: t && t['symbol'] && selectedToken && t['symbol'] === selectedToken['symbol'] ? 2 : 1,
+                      backgroundColor:
+                        t && t['symbol'] && selectedToken && t['symbol'] === selectedToken['symbol'] ? 'white' : 'black',
+                      color: t && t['symbol'] && selectedToken && t['symbol'] === selectedToken['symbol'] ? 'black' : 'white',
                     }}
                   >
-                    <div
-                      className={`w-4 h-4 rounded-full bg-no-repeat bg-contain bg-center mr-1 ${
-                        t && t['symbol'] && selectedToken && t['symbol'] === selectedToken['symbol'] ? 'bg-white' : 'bg-black'
-                      }`}
-                      style={{
+                    <Box
+                      sx={{
+                        width: 16,
+                        height: 16,
+                        borderRadius: '50%',
+                        backgroundRepeat: 'no-repeat',
+                        backgroundSize: 'contain',
+                        backgroundPosition: 'center',
                         backgroundImage: t.logo ? `url(${t.logo})` : undefined,
+                        marginRight: 1,
+                        backgroundColor:
+                          t && t['symbol'] && selectedToken && t['symbol'] === selectedToken['symbol'] ? 'white' : 'black',
                       }}
                     />
-                    <div>{t.symbol}</div>
-                  </div>
+                    <Box>{t.symbol}</Box>
+                  </Box>
                 ))}
-              </div>
-            </div>
-            <div className="mt-8">
+              </Box>
+            </Box>
+            <Box my={4}>
               <label>Search</label>
               {/* <Creatable
               filterOption={createFilter({ ignoreAccents: false })}
@@ -142,22 +153,15 @@ const TokenSelect = props => {
                 renderInput={params => <TextField {...params} label="Select..." />}
                 disableListWrap
               />
-            </div>
+            </Box>
 
-            <Button
-              variant="outlined"
-              color="inherit"
-              className="mt-4"
-              size={'large'}
-              disabled={!selectedToken}
-              onClick={handleSelect}
-            >
+            <Button variant="outlined" color="inherit" size={'large'} disabled={!selectedToken} onClick={handleSelect}>
               Select
             </Button>
           </Typography>
         </Box>
       </Modal>
-    </div>
+    </Box>
   );
 };
 

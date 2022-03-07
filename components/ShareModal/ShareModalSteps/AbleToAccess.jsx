@@ -1,17 +1,28 @@
 import React from 'react';
+import { Box } from '@mui/material';
 import { WalletIcon, TokenIcon, DAOIcon, POAPIcon } from '../icons';
 
 const TypeButton = props => {
   const { type, icon, title, onClick } = props;
 
   return (
-    <div
-      className="flex flex-col justify-between py-2 w-[180px] h-[148px] border border-white cursor-pointer box-border text-white"
+    <Box
+      sx={{
+        display: 'flex',
+        flexDirection: 'column',
+        justifyContent: 'space-between',
+        paddingY: 1,
+        width: 180,
+        height: 148,
+        border: 1,
+        borderColor: 'text.secondary',
+        cursor: 'pointer',
+      }}
       onClick={() => onClick(type)}
     >
       {icon}
-      <div className="text-white mb-2 text-center">{title}</div>
-    </div>
+      <Box sx={{ marginBottom: 1, textAlign: 'center' }}>{title}</Box>
+    </Box>
   );
 };
 
@@ -42,14 +53,14 @@ const AbleToAccess = props => {
   const { setActiveStep } = props;
 
   return (
-    <div className="mb-4">
-      <div className="text-lg">Who should be able to access this asset?</div>
-      <div className="grid grid-cols-[180px_180px] gap-4 justify-center mt-[28px]">
+    <Box mb={2}>
+      <h3>Who should be able to access this asset?</h3>
+      <Box sx={{ display: 'grid', gridTemplateColumns: '180px 180px', gap: 2, justifyContent: 'center', marginTop: 6 }}>
         {ITEMS.map((item, i) => (
           <TypeButton key={i} {...item} onClick={setActiveStep} />
         ))}
-      </div>
-    </div>
+      </Box>
+    </Box>
   );
 };
 

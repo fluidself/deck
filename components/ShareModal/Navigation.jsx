@@ -1,12 +1,12 @@
 import React from 'react';
-import { Button } from '@mui/material';
+import { Box, Button } from '@mui/material';
 import { ArrowBack, ArrowForward } from '@mui/icons-material';
 
 const Navigation = props => {
   const { backward, forward } = props;
 
   return (
-    <div className="mt-16 flex items-center justify-between">
+    <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 8 }}>
       {backward ? (
         <Button variant="outlined" onClick={backward.onClick} size="large" color="inherit" startIcon={<ArrowBack />}>
           {backward?.label ?? 'Back'}
@@ -25,7 +25,7 @@ const Navigation = props => {
           {forward.label ?? 'Next'}
         </Button>
       ) : null}
-    </div>
+    </Box>
   );
 };
 

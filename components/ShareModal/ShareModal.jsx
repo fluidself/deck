@@ -135,17 +135,24 @@ const ShareModal = props => {
           transform: 'translate(-50%, -50%)',
           maxWidth: 'lg',
           bgcolor: 'background.paper',
-          border: '1px solid white',
-          p: 3,
+          border: 1,
+          borderColor: 'text.secondary',
+          px: 3,
+          pt: 1,
+          pb: 3,
         }}
       >
-        <Typography id="modal-modal-title" variant="div" className="flex justify-between items-center">
+        <Typography
+          id="modal-modal-title"
+          component="div"
+          sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}
+        >
           <span>{title}</span>
-          <IconButton onClick={handleClose}>
+          <IconButton onClick={handleClose} sx={{ marginRight: '-14px' }}>
             <Close />
           </IconButton>
         </Typography>
-        <Typography variant="div" id="modal-modal-description" sx={{ mt: 2 }}>
+        <Typography variant="div" id="modal-modal-description" mt={2}>
           {error ? (
             <div>
               <div style={{ height: '24px' }} />
@@ -156,10 +163,10 @@ const ShareModal = props => {
               </Snackbar>
             </div>
           ) : null}
-          <div className="w-[654px]">
+          <Box sx={{ width: 650 }}>
             <ModalComponent type={activeStep} setActiveStep={setActiveStep} />
             <Snackbar open={showingSnackbar} autoHideDuration={3000} message={'Copied!'} />
-          </div>
+          </Box>
           <UnsavedPopup open={showUnsavedPopup} onClose={onClose} onCancel={() => setShowUnsavedPopup(false)} />
         </Typography>
       </Box>

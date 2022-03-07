@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { Box } from '@mui/material';
 import InputWrapper from '../InputWrapper';
 import ChainSelector from '../ChainSelector';
 import Navigation from '../Navigation';
@@ -26,15 +27,15 @@ const DAOMembers = ({ setActiveStep, onAccessControlConditionsSelected }) => {
   };
 
   return (
-    <div>
-      <h4 className="text-lg">Which DAO’s members should be able to access this asset?</h4>
-      <div className="mt-4">
-        <div className="mt-4">
+    <Box>
+      <h3>Which DAO’s members should be able to access this asset?</h3>
+      <Box mt={2}>
+        <Box>
           <label>Select blockchain to check requirements against:</label>
           <ChainSelector chain={chain} setChain={setChain} />
-        </div>
+        </Box>
 
-        <div className="mt-4">
+        <Box mt={2}>
           <InputWrapper
             value={DAOAddress}
             label="Add DAO contract address"
@@ -43,11 +44,11 @@ const DAOMembers = ({ setActiveStep, onAccessControlConditionsSelected }) => {
             size="m"
             handleChange={value => setDAOAddress(value)}
           />
-        </div>
-      </div>
-      <span className="mt-4 text-sm block">
+        </Box>
+      </Box>
+      <Box mt={2} fontSize={14}>
         Lit Gateway currently supports DAOs using the MolochDAOv2.1 contract (includes DAOhaus){' '}
-      </span>
+      </Box>
 
       <Navigation
         backward={{ onClick: () => setActiveStep('ableToAccess') }}
@@ -58,7 +59,7 @@ const DAOMembers = ({ setActiveStep, onAccessControlConditionsSelected }) => {
           disabled: !DAOAddress || !chain,
         }}
       />
-    </div>
+    </Box>
   );
 };
 

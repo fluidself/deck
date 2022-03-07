@@ -1,10 +1,9 @@
 import React from 'react';
-import { IconButton, TextField } from '@mui/material';
+import { Box, IconButton, TextField, Typography } from '@mui/material';
 import { Close } from '@mui/icons-material';
 
 const InputWrapper = ({
   type = 'text',
-  className,
   id,
   label,
   error,
@@ -16,6 +15,7 @@ const InputWrapper = ({
   size,
   clearable = false,
   onClear = () => false,
+  ...props
 }) => {
   const getState = () => {
     if (error) {
@@ -24,11 +24,15 @@ const InputWrapper = ({
     return undefined;
   };
   return (
-    <div className={`flex flex-col ${className}`}>
+    <Box sx={{ display: 'flex', flexDirection: 'column' }} {...props}>
       {label && <label htmlFor={id}>{label}</label>}
-      <div className="w-full relative">
+      <Box sx={{ display: 'relative', w: 1 }}>
         {clearable && (
-          <IconButton size="s" className="absolute right-[10px] bottom-[31%] z-10 cursor-pointer" onClick={onClear}>
+          <IconButton
+            size="s"
+            sx={{ display: 'absolute', right: 10, bottom: '31%', zIndex: 'tooltip', cursor: 'pointer' }}
+            onClick={onClear}
+          >
             <Close />
           </IconButton>
         )}
@@ -44,9 +48,9 @@ const InputWrapper = ({
           size={size}
           fullWidth
         />
-      </div>
-      {error && <span className="text-red-500 pl-4 mt-2">{error}</span>}
-    </div>
+      </Box>
+      {error && <Typography sx={{ color: 'error.main', paddingLeft: 2, marginTop: 1 }}>{error}</Typography>}
+    </Box>
   );
 };
 

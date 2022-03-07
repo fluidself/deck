@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
+import { Box, Link } from '@mui/material';
 import LitJsSdk from 'lit-js-sdk';
-
 import InputWrapper from '../InputWrapper';
 import ChainSelector from '../ChainSelector';
 import Navigation from '../Navigation';
@@ -44,28 +44,34 @@ const WhichWallet = ({ setActiveStep, onAccessControlConditionsSelected, setErro
   };
 
   return (
-    <div>
-      <div>
-        <h4>Which wallet should be able to access this asset?</h4>
-        <a className="underline cursor-pointer hover:text-offWhite" onClick={() => setActiveStep('assetWallet')}>
+    <Box>
+      <Box>
+        <h3>Which wallet should be able to access this asset?</h3>
+        <Link
+          component="button"
+          color="inherit"
+          fontFamily="inherit"
+          fontSize="inherit"
+          onClick={() => setActiveStep('assetWallet')}
+        >
           Grant Access on NFT Ownership
-        </a>
-      </div>
-      <div className="mt-4">
+        </Link>
+      </Box>
+      <Box mt={2}>
         <div>
           <label>Select blockchain</label>
           <ChainSelector chain={chain} setChain={setChain} />
         </div>
         <InputWrapper
           value={walletAddress}
-          className="mt-4"
           label="Add Wallet Address or Blockchain Domain (e.g. ENS, UNS) here:"
           id="walletAddress"
           autoFocus
           size="m"
           handleChange={value => setWalletAddress(value)}
+          mt={2}
         />
-      </div>
+      </Box>
 
       <Navigation
         backward={{ onClick: () => setActiveStep('ableToAccess') }}
@@ -76,7 +82,7 @@ const WhichWallet = ({ setActiveStep, onAccessControlConditionsSelected, setErro
           disabled: !walletAddress || !chain,
         }}
       />
-    </div>
+    </Box>
   );
 };
 
