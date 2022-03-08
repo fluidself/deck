@@ -16,6 +16,7 @@
     "@mui/icons-material": "^5.4.4",
     "@mui/material": "^5.4.4",
     "ethers": "^5.5.4",
+    "ipfs-core": "^0.14.1",
     "lit-js-sdk": "^1.1.135",
     "next": "12.1.0",
     "react": "17.0.2",
