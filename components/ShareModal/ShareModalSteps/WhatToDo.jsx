@@ -1,6 +1,6 @@
 import React from 'react';
 import { Box, Link } from '@mui/material';
-import LockIcon from '@mui/icons-material/Lock';
+import { Lock as LockIcon } from '@mui/icons-material';
 
 const WhatToDo = ({ setActiveStep, sharingItems, onlyAllowCopySharingLink, copyToClipboard, copyLinkText }) => {
   return (

@@ -33,9 +33,9 @@ const IpfsComponent = () => {
   return (
     <div>
       <h3>IPFS Status</h3>
-      <h4>ID: {id}</h4>
-      <h4>Version: {version}</h4>
-      <h4>Status: {isOnline ? 'Online' : 'Offline'}</h4>
+      <p>ID: {id}</p>
+      <p>Version: {version}</p>
+      <p>Status: {isOnline ? 'Online' : 'Offline'}</p>
     </div>
   );
 };
