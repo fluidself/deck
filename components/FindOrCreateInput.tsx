@@ -1,6 +1,8 @@
 import type { ForwardedRef } from 'react';
 import { forwardRef, useCallback, useMemo, useState } from 'react';
 import { useRouter } from 'next/router';
+import { useConnection } from '@self.id/framework';
+import type { ModelTypes } from 'types/ceramic';
 import type { TablerIcon } from '@tabler/icons';
 import { IconFilePlus, IconSearch } from '@tabler/icons';
 import { toast } from 'react-toastify';
@@ -29,7 +31,8 @@ type Props = {
 function FindOrCreateInput(props: Props, ref: ForwardedRef<HTMLInputElement>) {
   const { onOptionClick: onOptionClickCallback, className = '' } = props;
   const router = useRouter();
-  const { deck } = useCurrentDeck();
+  // const { deck } = useCurrentDeck();
+  const connect = useConnection<ModelTypes>()[1];
 
   const [inputText, setInputText] = useState('');
   const [selectedOptionIndex, setSelectedOptionIndex] = useState<number>(0);
@@ -62,27 +65,51 @@ function FindOrCreateInput(props: Props, ref: ForwardedRef<HTMLInputElement>) {
 
   const onOptionClick = useCallback(
     async (option: Option) => {
-      if (!deck) {
+      // if (!deck) {
+      //   return;
+      // }
+      const selfID = await connect();
+      if (selfID == null) {
+        // setState({ status: 'pending' });
         return;
       }
 
       onOptionClickCallback?.();
 
       if (option.type === OptionType.NEW_NOTE) {
-        const note = await upsertNote({ deck_id: deck.id, title: inputText });
-        if (!note) {
-          toast.error(`There was an error creating the note ${inputText}.`);
-          return;
-        }
+        try {
+          const doc = await selfID.client.dataModel.createTile('Note', {
+            title: inputText,
+            // content: value.content,
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString(),
+          });
+          console.log('doc', doc.id.toString());
 
-        router.push(`/app/${deck.id}/note/${note.id}`);
+          if (!doc) {
+            toast.error(`There was an error creating the note ${inputText}.`);
+            return;
+          }
+
+          router.push(`/app/${selfID.id}/note/${doc.id.toString()}`);
+        } catch (error) {
+          console.error(error);
+        }
+        // const note = await upsertNote({ deck_id: deck.id, title: inputText });
+        // if (!note) {
+        //   toast.error(`There was an error creating the note ${inputText}.`);
+        //   return;
+        // }
+
+        // router.push(`/app/${deck.id}/note/${note.id}`);
       } else if (option.type === OptionType.NOTE) {
-        router.push(`/app/${deck.id}/note/${option.id}`);
+        // router.push(`/app/${deck.id}/note/${option.id}`);
+        router.push(`/app/${selfID.id}/note/${option.id}`);
       } else {
         throw new Error(`Option type ${option.type} is not supported`);
       }
     },
-    [deck, router, inputText, onOptionClickCallback],
+    [router, inputText, onOptionClickCallback],
   );
 
   const onKeyDown = useCallback(

@@ -24,19 +24,24 @@ export type NoteItem = {
   title: string;
 };
 
-export type Notes = {
-  notes: Array<NoteItem>;
+export type Deck = {
+  deck_name: string;
+  notes?: Array<NoteItem>;
+  note_tree?: string;
+  // access_params: string;
 };
 
 export type ModelTypes = ModelTypeAliases<
   {
     BasicProfile: BasicProfile;
     Note: Note;
-    Notes: Notes;
+    // Notes: Notes;
+    Deck: Deck;
   },
   {
     basicProfile: 'BasicProfile';
-    notes: 'Notes';
-  },
-  { placeholderNote: 'Note' }
+    // notes: 'Notes';
+    deck: 'Deck';
+  }
+  // { placeholderNote: 'Note' }
 >;

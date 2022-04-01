@@ -63,10 +63,11 @@ const noteSchemaID = await manager.createSchema('Note', {
     },
   },
 });
-const notesSchemaID = await manager.createSchema('Notes', {
+const deckSchemaID = await manager.createSchema('Deck', {
   $schema: 'http://json-schema.org/draft-07/schema#',
-  title: 'NotesList',
+  title: 'Deck',
   type: 'object',
+  required: ['deck_name'],
   properties: {
     notes: {
       type: 'array',
@@ -89,80 +90,37 @@ const notesSchemaID = await manager.createSchema('Notes', {
         },
       },
     },
+    deck_name: {
+      type: 'string',
+      title: 'deck_name',
+      maxLength: 40,
+    },
+    note_tree: {
+      type: 'string',
+      title: 'note_tree',
+      maxLength: 2000,
+    },
+    // access_params: {
+    //   type: 'string',
+    //   title: 'access_params',
+    //   maxLength: 500,
+    // },
   },
 });
 
-// const deckSchemaID = await manager.createSchema('Deck', {
-//   $schema: 'http://json-schema.org/draft-07/schema#',
-//   title: 'Note',
-//   type: 'object',
-//   required: ['title'],
-//   properties: {
-//     user_id: {
-//       type: 'string',
-//       title: 'user_id',
-//     },
-//     id: {
-//       type: 'string',
-//       title: 'id',
-//     },
-//     note_tree: {
-//       type: 'string',
-//       title: 'note_tree',
-//     },
-//     deck_name: {
-//       type: 'string',
-//       title: 'deck_name',
-//       maxLength: 30,
-//     },
-//     access_params: {
-//       type: 'string',
-//       title: 'access_params',
-//     },
-//   },
-// });
-// const decksSchemaID = await manager.createSchema('Decks', {
-//   $schema: 'http://json-schema.org/draft-07/schema#',
-//   title: 'DecksList',
-//   type: 'object',
-//   properties: {
-//     decks: {
-//       type: 'array',
-//       title: 'decks',
-//       items: {
-//         type: 'object',
-//         title: 'DeckItem',
-//         properties: {
-//           id: {
-//             $comment: `cip88:ref:${manager.getSchemaURL(deckSchemaID)}`,
-//             type: 'string',
-//             pattern: '^ceramic://.+(\\?version=.+)?',
-//             maxLength: 150,
-//           },
-//           title: {
-//             type: 'string',
-//             title: 'title',
-//             maxLength: 100,
-//           },
-//         },
-//       },
-//     },
-//   },
-// });
-
 // Create the definition using the created schema ID
-await manager.createDefinition('notes', {
-  name: 'notes',
-  description: 'Simple text notes',
-  schema: manager.getSchemaURL(notesSchemaID),
+await manager.createDefinition('deck', {
+  name: 'deck',
+  description: 'DECK notes',
+  schema: manager.getSchemaURL(deckSchemaID),
 });
 
 // Create default Notes
-await manager.createTile(
-  'placeholderNote',
-  { title: 'Mock title', content: 'This is a placeholder for the note contents...' },
-  { schema: manager.getSchemaURL(noteSchemaID) },
-);
+// await manager.createTile(
+//   'placeholderNote',
+//   { title: 'Mock title', content: 'This is a placeholder for the note contents...' },
+//   { schema: manager.getSchemaURL(noteSchemaID) },
+// );
 
 // Write model to JSON file
 await writeFile(new URL('model.json', import.meta.url), JSON.stringify(manager.toJSON()));

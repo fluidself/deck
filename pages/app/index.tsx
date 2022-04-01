@@ -5,15 +5,17 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/router';
 // import { useAccount } from 'wagmi';
 import useSWR from 'swr';
+import { useConnection, useViewerRecord } from '@self.id/framework';
 import { toast } from 'react-toastify';
 import { ironOptions } from 'constants/iron-session';
 import supabase from 'lib/supabase';
 import insertDeck from 'lib/api/insertDeck';
 import selectDecks from 'lib/api/selectDecks';
-import { Deck } from 'types/supabase';
+// import { Deck } from 'types/supabase';
 import useIsMounted from 'utils/useIsMounted';
 import { useAuth } from 'utils/useAuth';
 import { AuthSig } from 'types/lit';
+import type { ModelTypes } from 'types/ceramic';
 import HomeHeader from 'components/home/HomeHeader';
 import RequestDeckAccess from 'components/home/RequestDeckAccess';
 import ProvideDeckName from 'components/home/ProvideDeckName';
@@ -26,7 +28,9 @@ export default function AppHome() {
   // const { data: decks } = useSWR(user ? 'decks' : null, () => selectDecks(user?.id), { revalidateOnFocus: false });
   const [requestingAccess, setRequestingAccess] = useState<boolean>(false);
   const [creatingDeck, setCreatingDeck] = useState<boolean>(false);
-  const isMounted = useIsMounted();
+  const deckRecord = useViewerRecord<ModelTypes, 'deck'>('deck');
+  const connect = useConnection<ModelTypes>()[1];
+  // const isMounted = useIsMounted();
 
   // useEffect(() => {
   //   const initLit = async () => {
@@ -49,20 +53,39 @@ export default function AppHome() {
   //   };
   // }, [accountData?.connector, signOut]);
 
-  // const createNewDeck = async (deckName: string) => {
-  //   if (!user) return;
+  const createNewDeck = async (deckName: string) => {
+    if (!deckRecord || !deckRecord.isLoadable) return;
 
-  //   const deck = await insertDeck({ user_id: user.id, deck_name: deckName });
+    // TODO: should there be helper hooks in util folder?
+    try {
+      const selfID = await connect();
+      if (selfID == null) {
+        // setState({ status: 'pending' });
+        return;
+      }
 
-  //   if (!deck) {
-  //     toast.error('There was an error creating the DECK');
-  //     return;
-  //   }
+      console.log(deckRecord);
+      await deckRecord.set({ deck_name: deckName, notes: [], note_tree: '' });
 
-  //   toast.success(`Successfully created ${deck.deck_name}`);
-  //   setCreatingDeck(false);
-  //   router.push(`/app/${deck.id}`);
-  // };
+      // const deckPage = `/app/${selfID.id}`;
+      // console.log('deckPage', deckPage);
+      // setState({ status: 'done', notePage });
+      // return deckPage;
+      router.push(`/app/${selfID.id}`);
+    } catch (error) {
+      // setState({ status: 'failed', error });
+      console.error(error);
+    }
+
+    // if (!deck) {
+    //   toast.error('There was an error creating the DECK');
+    //   return;
+    // }
+
+    // toast.success(`Successfully created ${deck.deck_name}`);
+    // setCreatingDeck(false);
+    // router.push(`/app/${deck.id}`);
+  };
 
   // const verifyAccess = async (requestedDeck: string) => {
   //   if (!requestedDeck) return;
@@ -132,8 +155,7 @@ export default function AppHome() {
               {creatingDeck ? (
                 <ProvideDeckName
                   onCancel={() => setCreatingDeck(false)}
-                  // onDeckNameProvided={async (deckName: string) => await createNewDeck(deckName)}
-                  onDeckNameProvided={() => {}}
+                  onDeckNameProvided={async (deckName: string) => await createNewDeck(deckName)}
                 />
               ) : (
                 <Button onClick={() => setCreatingDeck(true)}>Create a new DECK</Button>
