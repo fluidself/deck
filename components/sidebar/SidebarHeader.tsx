@@ -1,3 +1,4 @@
+import { useConnection } from '@self.id/framework';
 import { Menu } from '@headlessui/react';
 import {
   IconLogout,
@@ -9,7 +10,7 @@ import {
   IconFolderPlus,
   IconPencil,
 } from '@tabler/icons';
-import { useAuth } from 'utils/useAuth';
+// import { useAuth } from 'utils/useAuth';
 import { useStore } from 'lib/store';
 import Tooltip from 'components/Tooltip';
 import { DropdownItem } from 'components/Dropdown';
@@ -21,7 +22,8 @@ type Props = {
 
 export default function Header(props: Props) {
   const { setIsShareModalOpen, setCreateJoinRenameModal } = props;
-  const { signOut } = useAuth();
+  // const { signOut } = useAuth();
+  const [, , disconnect] = useConnection();
   const setIsSidebarOpen = useStore(state => state.setIsSidebarOpen);
 
   return (
@@ -72,7 +74,7 @@ export default function Header(props: Props) {
               <IconCode size={18} className="mr-1" />
               <span>Code</span>
             </DropdownItem>
-            <DropdownItem className="" onClick={signOut}>
+            <DropdownItem className="" onClick={disconnect}>
               <IconLogout size={18} className="mr-1" />
               <span>Sign Out</span>
             </DropdownItem>

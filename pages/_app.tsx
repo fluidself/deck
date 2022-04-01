@@ -3,12 +3,18 @@ import Router from 'next/router';
 import { ToastContainer } from 'react-toastify';
 import NProgress from 'nprogress';
 import type { AppProps } from 'next/app';
-import { Provider, defaultChains } from 'wagmi';
-import { InjectedConnector } from 'wagmi/connectors/injected';
-import { providers } from 'ethers';
-import { ProvideAuth } from 'utils/useAuth';
+import type { ModelTypesToAliases } from '@glazed/types';
+import { Provider as SelfIDProvider } from '@self.id/framework';
+import closeIcon from '@self.id/multiauth/assets/icon-close.svg';
+import selectedIcon from '@self.id/multiauth/assets/icon-selected.svg';
+import ethereumLogo from '@self.id/multiauth/assets/ethereum.png';
+import metaMaskLogo from '@self.id/multiauth/assets/metamask.png';
+// import { ProvideAuth } from 'utils/useAuth';
 import AppLayout from 'components/AppLayout';
 import ServiceWorker from 'components/ServiceWorker';
+import { CERAMIC_NETWORK } from 'constants/ceramic';
+import publishedModel from '../model.json';
+import type { ModelTypes } from 'types/ceramic';
 import 'styles/globals.css';
 import 'styles/nprogress.css';
 import 'react-toastify/dist/ReactToastify.css';
@@ -18,18 +24,11 @@ Router.events.on('routeChangeStart', () => NProgress.start());
 Router.events.on('routeChangeComplete', () => NProgress.done());
 Router.events.on('routeChangeError', () => NProgress.done());
 
-const infuraId = process.env.NEXT_PUBLIC_INFURA_ID as string;
-const chains = defaultChains;
-
-type Config = { chainId?: number };
-
-const connectors = ({ chainId }: Config) => {
-  return [new InjectedConnector({ chains })];
-};
-
-const provider = ({ chainId }: Config) => new providers.InfuraProvider(chainId, infuraId);
+const model: ModelTypesToAliases<ModelTypes> = publishedModel;
 
 export default function MyApp({ Component, pageProps, router }: AppProps) {
+  const { state, ...props } = pageProps;
+
   return (
     <>
       <Head>
@@ -45,17 +44,30 @@ export default function MyApp({ Component, pageProps, router }: AppProps) {
         <meta name="theme-color" content="#ffffff"></meta>
       </Head>
       <ServiceWorker>
-        <Provider autoConnect connectors={connectors} provider={provider}>
-          <ProvideAuth>
-            {router.pathname.startsWith('/app/') ? (
-              <AppLayout>
-                <Component {...pageProps} />
-              </AppLayout>
-            ) : (
-              <Component {...pageProps} />
-            )}
-          </ProvideAuth>
-        </Provider>
+        <SelfIDProvider
+          auth={{
+            modal: { closeIcon: closeIcon.src, selectedIcon: selectedIcon.src },
+            networks: [
+              {
+                key: 'ethereum',
+                logo: ethereumLogo.src,
+                connectors: [{ key: 'injected', logo: metaMaskLogo.src }],
+              },
+            ],
+          }}
+          client={{ ceramic: CERAMIC_NETWORK, model }}
+          state={state}
+        >
+          {/* <ProvideAuth> */}
+          {router.pathname.startsWith('/app/') ? (
+            <AppLayout>
+              <Component {...props} />
+            </AppLayout>
+          ) : (
+            <Component {...props} />
+          )}
+          {/* </ProvideAuth> */}
+        </SelfIDProvider>
       </ServiceWorker>
       <ToastContainer position="top-center" hideProgressBar newestOnTop={true} theme="colored" />
     </>

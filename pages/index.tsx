@@ -1,28 +1,38 @@
+import { useConnection } from '@self.id/framework';
 import { withIronSessionSsr } from 'iron-session/next';
 import { IconInfoCircle } from '@tabler/icons';
 import { useEffect } from 'react';
-import { useAccount } from 'wagmi';
+import { useRouter } from 'next/router';
+// import { useAccount } from 'wagmi';
 import { ironOptions } from 'constants/iron-session';
 import selectDecks from 'lib/api/selectDecks';
-import { useAuth } from 'utils/useAuth';
+// import { useAuth } from 'utils/useAuth';
 import { EthereumIcon } from 'components/home/EthereumIcon';
 import Button from 'components/home/Button';
 
 export default function Home() {
-  const [{ data: accountData }] = useAccount();
-  const { signIn, signOut } = useAuth();
+  // const [{ data: accountData }] = useAccount();
+  // const { signIn, signOut } = useAuth();
+  const [connection, connect] = useConnection();
+  const router = useRouter();
 
   useEffect(() => {
-    const onDisconnect = () => signOut();
-    accountData?.connector?.on('disconnect', onDisconnect);
+    if (connection.status === 'connected') {
+      router.push('/app');
+    }
+  }, [connection]);
 
-    return () => {
-      accountData?.connector?.off('disconnect', onDisconnect);
-    };
-  }, [accountData?.connector, signOut]);
+  // useEffect(() => {
+  //   const onDisconnect = () => signOut();
+  //   accountData?.connector?.on('disconnect', onDisconnect);
+
+  //   return () => {
+  //     accountData?.connector?.off('disconnect', onDisconnect);
+  //   };
+  // }, [accountData?.connector, signOut]);
 
   return (
-    <div className="mt-2">
+    <div className="mt-2 font-display text-base">
       <a
         href="https://github.com/fluidself/deck#deck"
         rel="noopener noreferrer"
@@ -50,8 +60,7 @@ export default function Home() {
             </span>
           </h1>
         </div>
-
-        <Button className="py-4 w-80 mx-auto" onClick={signIn} primary>
+        <Button className="py-4 w-80 mx-auto" primary onClick={connect}>
           <EthereumIcon />
           Sign-in with Ethereum
         </Button>

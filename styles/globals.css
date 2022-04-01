@@ -168,3 +168,8 @@ button:focus {
 .publication a:hover {
   text-decoration-line: underline;
 }
+
+div[data-g-portal-id='0'] {
+  background-color: rgb(23, 23, 23);
+  color: rgb(245, 245, 245);
+}

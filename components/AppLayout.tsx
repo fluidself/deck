@@ -4,13 +4,13 @@ import { useRouter } from 'next/router';
 import Head from 'next/head';
 import classNames from 'classnames';
 import colors from 'tailwindcss/colors';
-import { useAccount } from 'wagmi';
+// import { useAccount } from 'wagmi';
 import { useStore, store, NoteTreeItem, getNoteTreeItem, Notes, SidebarTab } from 'lib/store';
 import supabase from 'lib/supabase';
 import { Note, Deck } from 'types/supabase';
 import { ProvideCurrentDeck } from 'utils/useCurrentDeck';
 import useHotkeys from 'utils/useHotkeys';
-import { useAuth } from 'utils/useAuth';
+// import { useAuth } from 'utils/useAuth';
 import { isMobile } from 'utils/device';
 import Sidebar from './sidebar/Sidebar';
 import FindOrCreateModal from './FindOrCreateModal';
@@ -28,102 +28,109 @@ export default function AppLayout(props: Props) {
   const {
     query: { deckId },
   } = router;
-  const { user, isLoaded, signOut } = useAuth();
-  const [{ data: accountData }] = useAccount();
+  // const { user, isLoaded, signOut } = useAuth();
+  // const [{ data: accountData }] = useAccount();
   const [isPageLoaded, setIsPageLoaded] = useState(false);
 
-  useEffect(() => {
-    const onDisconnect = () => signOut();
-    accountData?.connector?.on('disconnect', onDisconnect);
+  // useEffect(() => {
+  //   const onDisconnect = () => signOut();
+  //   accountData?.connector?.on('disconnect', onDisconnect);
 
-    return () => {
-      accountData?.connector?.off('disconnect', onDisconnect);
-    };
-  }, [accountData?.connector, signOut]);
+  //   return () => {
+  //     accountData?.connector?.off('disconnect', onDisconnect);
+  //   };
+  // }, [accountData?.connector, signOut]);
 
-  useEffect(() => {
-    if (!isPageLoaded && isLoaded && user) {
-      // Use user's specific store and rehydrate data
-      useStore.persist.setOptions({
-        name: `deck-storage-${user.id}`,
-      });
-      useStore.persist.rehydrate();
-    }
-  }, [isPageLoaded, isLoaded, user]);
+  // useEffect(() => {
+  //   if (!isPageLoaded && isLoaded && user) {
+  //     // Use user's specific store and rehydrate data
+  //     useStore.persist.setOptions({
+  //       name: `deck-storage-${user.id}`,
+  //     });
+  //     useStore.persist.rehydrate();
+  //   }
+  // }, [isPageLoaded, isLoaded, user]);
 
   const setNotes = useStore(state => state.setNotes);
   const setNoteTree = useStore(state => state.setNoteTree);
   const setDeckId = useStore(state => state.setDeckId);
+
   const initData = useCallback(async () => {
-    if (!deckId || typeof deckId !== 'string') {
-      return;
-    }
-
-    setDeckId(deckId);
-
-    const { data: notes } = await supabase
-      .from<Note>('notes')
-      .select('id, title, content, created_at, updated_at')
-      .eq('deck_id', deckId)
-      .order('title');
-
-    // Redirect to most recent note or first note in database
-    if (router.pathname.match(/^\/app\/[^/]+$/i)) {
-      const openNoteIds = store.getState().openNoteIds;
-      if (openNoteIds.length > 0 && notes && notes.findIndex(note => note.id === openNoteIds[0]) > -1) {
-        router.replace(`/app/${deckId}/note/${openNoteIds[0]}`);
-        return;
-      } else if (notes && notes.length > 0) {
-        router.replace(`/app/${deckId}/note/${notes[0].id}`);
-        return;
-      }
-    }
-
-    if (!notes) {
-      setIsPageLoaded(true);
-      return;
-    }
-
-    // Set notes
-    const notesAsObj = notes.reduce<Record<Note['id'], Note>>((acc, note) => {
-      acc[note.id] = note;
-      return acc;
-    }, {});
-    setNotes(notesAsObj);
-
-    // Set note tree
-    const { data: deckData } = await supabase.from<Deck>('decks').select('note_tree').eq('id', deckId).single();
-
-    if (deckData?.note_tree) {
-      const noteTree: NoteTreeItem[] = [...deckData.note_tree];
-      // This is a sanity check for removing notes in the noteTree that do not exist
-      removeNonexistentNotes(noteTree, notesAsObj);
-      // If there are notes that are not in the note tree, add them
-      // This is a sanity check to make sure there are no orphaned notes
-      for (const note of notes) {
-        if (getNoteTreeItem(noteTree, note.id) === null) {
-          noteTree.push({ id: note.id, children: [], collapsed: true });
-        }
-      }
-      // Use the note tree saved in the database
-      setNoteTree(noteTree);
-    } else {
-      // No note tree in database, just use notes
-      setNoteTree(notes.map(note => ({ id: note.id, children: [], collapsed: true })));
-    }
-
     setIsPageLoaded(true);
+    return;
+    // if (!deckId || typeof deckId !== 'string') {
+    //   return;
+    // }
+
+    // setDeckId(deckId);
+
+    // const { data: notes } = await supabase
+    //   .from<Note>('notes')
+    //   .select('id, title, content, created_at, updated_at')
+    //   .eq('deck_id', deckId)
+    //   .order('title');
+
+    // // Redirect to most recent note or first note in database
+    // if (router.pathname.match(/^\/app\/[^/]+$/i)) {
+    //   const openNoteIds = store.getState().openNoteIds;
+    //   if (openNoteIds.length > 0 && notes && notes.findIndex(note => note.id === openNoteIds[0]) > -1) {
+    //     router.replace(`/app/${deckId}/note/${openNoteIds[0]}`);
+    //     return;
+    //   } else if (notes && notes.length > 0) {
+    //     router.replace(`/app/${deckId}/note/${notes[0].id}`);
+    //     return;
+    //   }
+    // }
+
+    // if (!notes) {
+    //   setIsPageLoaded(true);
+    //   return;
+    // }
+
+    // // Set notes
+    // const notesAsObj = notes.reduce<Record<Note['id'], Note>>((acc, note) => {
+    //   acc[note.id] = note;
+    //   return acc;
+    // }, {});
+    // setNotes(notesAsObj);
+
+    // // Set note tree
+    // const { data: deckData } = await supabase.from<Deck>('decks').select('note_tree').eq('id', deckId).single();
+
+    // if (deckData?.note_tree) {
+    //   const noteTree: NoteTreeItem[] = [...deckData.note_tree];
+    //   // This is a sanity check for removing notes in the noteTree that do not exist
+    //   removeNonexistentNotes(noteTree, notesAsObj);
+    //   // If there are notes that are not in the note tree, add them
+    //   // This is a sanity check to make sure there are no orphaned notes
+    //   for (const note of notes) {
+    //     if (getNoteTreeItem(noteTree, note.id) === null) {
+    //       noteTree.push({ id: note.id, children: [], collapsed: true });
+    //     }
+    //   }
+    //   // Use the note tree saved in the database
+    //   setNoteTree(noteTree);
+    // } else {
+    //   // No note tree in database, just use notes
+    //   setNoteTree(notes.map(note => ({ id: note.id, children: [], collapsed: true })));
+    // }
+
+    // setIsPageLoaded(true);
   }, [deckId, router, setNotes, setNoteTree, setDeckId]);
 
   useEffect(() => {
-    if (isLoaded && !user) {
-      // Redirect to root page if there is no user logged in
-      router.replace('/');
-    } else if (!isPageLoaded && isLoaded && user) {
-      // Initialize data if there is a user and the data has not been initialized yet
-      initData();
-    }
-  }, [router, user, isLoaded, isPageLoaded, initData]);
+    initData();
+  }, []);
+
+  // useEffect(() => {
+  //   if (isLoaded && !user) {
+  //     // Redirect to root page if there is no user logged in
+  //     router.replace('/');
+  //   } else if (!isPageLoaded && isLoaded && user) {
+  //     // Initialize data if there is a user and the data has not been initialized yet
+  //     initData();
+  //   }
+  // }, [router, user, isLoaded, isPageLoaded, initData]);
 
   const [isFindOrCreateModalOpen, setIsFindOrCreateModalOpen] = useState(false);
   // const [isSettingsOpen, setIsSettingsOpen] = useState(false);
@@ -150,33 +157,33 @@ export default function AppLayout(props: Props) {
     }
   }, [setIsSidebarOpen, setIsPageStackingOn, hasHydrated]);
 
-  useEffect(() => {
-    if (!deckId) {
-      return;
-    }
+  // useEffect(() => {
+  //   if (!deckId) {
+  //     return;
+  //   }
 
-    // Subscribe to changes on the notes table for the current DECK
-    const subscription = supabase
-      .from<Note>(`notes:deck_id=eq.${deckId}`)
-      .on('*', payload => {
-        if (payload.eventType === 'INSERT') {
-          upsertNote(payload.new);
-        } else if (payload.eventType === 'UPDATE') {
-          // Don't update the note if it is currently open
-          const openNoteIds = store.getState().openNoteIds;
-          if (!openNoteIds.includes(payload.new.id)) {
-            updateNote(payload.new);
-          }
-        } else if (payload.eventType === 'DELETE') {
-          deleteNote(payload.old.id);
-        }
-      })
-      .subscribe();
+  //   // Subscribe to changes on the notes table for the current DECK
+  //   const subscription = supabase
+  //     .from<Note>(`notes:deck_id=eq.${deckId}`)
+  //     .on('*', payload => {
+  //       if (payload.eventType === 'INSERT') {
+  //         upsertNote(payload.new);
+  //       } else if (payload.eventType === 'UPDATE') {
+  //         // Don't update the note if it is currently open
+  //         const openNoteIds = store.getState().openNoteIds;
+  //         if (!openNoteIds.includes(payload.new.id)) {
+  //           updateNote(payload.new);
+  //         }
+  //       } else if (payload.eventType === 'DELETE') {
+  //         deleteNote(payload.old.id);
+  //       }
+  //     })
+  //     .subscribe();
 
-    return () => {
-      subscription.unsubscribe();
-    };
-  }, [deckId, upsertNote, updateNote, deleteNote]);
+  //   return () => {
+  //     subscription.unsubscribe();
+  //   };
+  // }, [deckId, upsertNote, updateNote, deleteNote]);
 
   const hotkeys = useMemo(
     () => [
@@ -211,7 +218,7 @@ export default function AppLayout(props: Props) {
   );
   useHotkeys(hotkeys);
 
-  const appContainerClassName = classNames('h-screen font-display', { dark: darkMode }, className);
+  const appContainerClassName = classNames('h-screen font-display text-base', { dark: darkMode }, className);
 
   if (!isPageLoaded) {
     return <PageLoading />;
