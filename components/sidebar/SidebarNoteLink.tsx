@@ -1,11 +1,4 @@
-import {
-  ForwardedRef,
-  forwardRef,
-  HTMLAttributes,
-  memo,
-  useCallback,
-  useMemo,
-} from 'react';
+import { ForwardedRef, forwardRef, HTMLAttributes, memo, useCallback, useMemo } from 'react';
 import { IconCaretRight } from '@tabler/icons';
 import { useStore } from 'lib/store';
 import { isMobile } from 'utils/device';
@@ -19,27 +12,18 @@ interface Props extends HTMLAttributes<HTMLDivElement> {
   isHighlighted?: boolean;
 }
 
-const SidebarNoteLink = (
-  props: Props,
-  forwardedRef: ForwardedRef<HTMLDivElement>
-) => {
+const SidebarNoteLink = (props: Props, forwardedRef: ForwardedRef<HTMLDivElement>) => {
   const { node, isHighlighted, className = '', style, ...otherProps } = props;
 
-  const note = useStore((state) => state.notes[node.id]);
-  const setIsSidebarOpen = useStore((state) => state.setIsSidebarOpen);
-  const lastOpenNoteId = useStore(
-    (state) => state.openNoteIds[state.openNoteIds.length - 1]
-  );
+  const note = useStore(state => state.notes[node.id]);
+  const notesInState = useStore(state => state.notes);
+  const setIsSidebarOpen = useStore(state => state.setIsSidebarOpen);
+  const lastOpenNoteId = useStore(state => state.openNoteIds[state.openNoteIds.length - 1]);
   const { onClick: onNoteLinkClick } = useOnNoteLinkClick(lastOpenNoteId);
 
-  const toggleNoteTreeItemCollapsed = useStore(
-    (state) => state.toggleNoteTreeItemCollapsed
-  );
+  const toggleNoteTreeItemCollapsed = useStore(state => state.toggleNoteTreeItemCollapsed);
 
-  const onArrowClick = useCallback(
-    () => toggleNoteTreeItemCollapsed(node.id),
-    [node, toggleNoteTreeItemCollapsed]
-  );
+  const onArrowClick = useCallback(() => toggleNoteTreeItemCollapsed(node.id), [node, toggleNoteTreeItemCollapsed]);
 
   // We add 16px for every level of nesting, plus 8px base padding
   const leftPadding = useMemo(() => node.depth * 16 + 8, [node.depth]);
@@ -55,7 +39,7 @@ const SidebarNoteLink = (
       <div
         role="button"
         className="flex items-center flex-1 px-2 py-1 overflow-hidden select-none overflow-ellipsis whitespace-nowrap"
-        onClick={(e) => {
+        onClick={e => {
           e.preventDefault();
           onNoteLinkClick(note.id, e.shiftKey);
           if (isMobile()) {
@@ -67,7 +51,7 @@ const SidebarNoteLink = (
       >
         <button
           className="p-1 mr-1 rounded hover:bg-gray-300 active:bg-gray-400 dark:hover:bg-gray-600 dark:active:bg-gray-500"
-          onClick={(e) => {
+          onClick={e => {
             e.preventDefault();
             e.stopPropagation();
             onArrowClick?.();
@@ -81,14 +65,9 @@ const SidebarNoteLink = (
             fill="currentColor"
           />
         </button>
-        <span className="overflow-hidden overflow-ellipsis whitespace-nowrap">
-          {note.title}
-        </span>
+        <span className="overflow-hidden overflow-ellipsis whitespace-nowrap">{note.title}</span>
       </div>
-      <SidebarNoteLinkDropdown
-        note={note}
-        className="opacity-0.1 group-hover:opacity-100"
-      />
+      <SidebarNoteLinkDropdown note={note} className="opacity-0.1 group-hover:opacity-100" />
     </SidebarItem>
   );
 };

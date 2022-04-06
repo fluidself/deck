@@ -13,6 +13,7 @@ export type NoteForm = {
 };
 
 export type Note = {
+  id: string;
   title: string;
   content: string;
   created_at: string;
@@ -22,6 +23,9 @@ export type Note = {
 export type NoteItem = {
   id: string;
   title: string;
+  content: string;
+  created_at: string;
+  updated_at: string;
 };
 
 export type Deck = {

@@ -31,6 +31,7 @@ export default function AppHome() {
   const deckRecord = useViewerRecord<ModelTypes, 'deck'>('deck');
   const connect = useConnection<ModelTypes>()[1];
   // const isMounted = useIsMounted();
+  console.log('deckRecord', deckRecord);
 
   // useEffect(() => {
   //   const initLit = async () => {

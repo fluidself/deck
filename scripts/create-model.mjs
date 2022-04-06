@@ -42,6 +42,7 @@ const noteSchemaID = await manager.createSchema('Note', {
     content: {
       type: 'string',
       title: 'content',
+      // default: '[{"type":"paragraph","children":[{"text":""}]}]',
       maxLength: 10000,
     },
     title: {
@@ -81,6 +82,11 @@ const deckSchemaID = await manager.createSchema('Deck', {
             type: 'string',
             pattern: '^ceramic://.+(\\?version=.+)?',
             maxLength: 150,
+          },
+          content: {
+            type: 'string',
+            title: 'content',
+            maxLength: 10000,
           },
           title: {
             type: 'string',

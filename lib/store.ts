@@ -7,6 +7,7 @@ import type { Note } from 'types/supabase';
 import { caseInsensitiveStringEqual } from 'utils/string';
 import { Backlink } from 'editor/backlinks/useBacklinks';
 import createUserSettingsSlice, { UserSettings } from './createUserSettingsSlice';
+import type { ModelTypes, NoteItem } from 'types/ceramic';
 import type { NoteUpdate } from './api/updateNote';
 
 export { default as shallowEqual } from 'zustand/shallow';
@@ -35,6 +36,7 @@ const storage: StateStorage = {
 };
 
 export type Notes = Record<Note['id'], Note>;
+// export type Notes = Record<Note['id'] | 'id', Note>;
 
 export type NoteTreeItem = {
   id: Note['id'];
@@ -50,7 +52,7 @@ export enum SidebarTab {
 export type Store = {
   _hasHydrated: boolean; // TODO: temporary until https://github.com/pmndrs/zustand/issues/562 gets fixed
   notes: Notes;
-  setNotes: Setter<Notes>;
+  setNotes: Setter<Notes | any>;
   upsertNote: (note: Note) => void;
   updateNote: (note: NoteUpdate) => void;
   deleteNote: (noteId: string) => void;

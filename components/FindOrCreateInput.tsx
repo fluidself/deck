@@ -1,13 +1,15 @@
 import type { ForwardedRef } from 'react';
 import { forwardRef, useCallback, useMemo, useState } from 'react';
 import { useRouter } from 'next/router';
-import { useConnection } from '@self.id/framework';
+import { v4 as uuidv4 } from 'uuid';
+import { useConnection, useViewerRecord } from '@self.id/framework';
 import type { ModelTypes } from 'types/ceramic';
 import type { TablerIcon } from '@tabler/icons';
 import { IconFilePlus, IconSearch } from '@tabler/icons';
 import { toast } from 'react-toastify';
 import upsertNote from 'lib/api/upsertNote';
 import { useCurrentDeck } from 'utils/useCurrentDeck';
+import { useDeckRecord } from 'utils/ceramic-hooks';
 import useNoteSearch from 'utils/useNoteSearch';
 import { caseInsensitiveStringEqual } from 'utils/string';
 
@@ -30,9 +32,17 @@ type Props = {
 
 function FindOrCreateInput(props: Props, ref: ForwardedRef<HTMLInputElement>) {
   const { onOptionClick: onOptionClickCallback, className = '' } = props;
-  const router = useRouter();
   // const { deck } = useCurrentDeck();
+  const router = useRouter();
+  const {
+    query: { deckId },
+  } = router;
   const connect = useConnection<ModelTypes>()[1];
+  // let deckRecord: any;
+  // if (deckId && typeof deckId === 'string') {
+  //   deckRecord = useDeckRecord(deckId);
+  // }
+  const deckRecord = useViewerRecord<ModelTypes, 'deck'>('deck');
 
   const [inputText, setInputText] = useState('');
   const [selectedOptionIndex, setSelectedOptionIndex] = useState<number>(0);
@@ -78,18 +88,22 @@ function FindOrCreateInput(props: Props, ref: ForwardedRef<HTMLInputElement>) {
 
       if (option.type === OptionType.NEW_NOTE) {
         try {
+          if (!deckRecord || !deckRecord.isLoadable || !deckRecord.content) return;
+          // console.log(deckRecord);
           const doc = await selfID.client.dataModel.createTile('Note', {
             title: inputText,
-            // content: value.content,
+            content: JSON.stringify([{ id: uuidv4(), type: 'paragraph', children: [{ text: '' }] }]),
             created_at: new Date().toISOString(),
             updated_at: new Date().toISOString(),
           });
-          console.log('doc', doc.id.toString());
-
+          // console.log('doc', doc);
           if (!doc) {
             toast.error(`There was an error creating the note ${inputText}.`);
             return;
           }
+
+          const notes = deckRecord.content?.notes ?? [];
+          await deckRecord.set({ ...deckRecord.content, notes: [...notes, { id: doc.id.toUrl(), ...doc.content }] });
 
           router.push(`/app/${selfID.id}/note/${doc.id.toString()}`);
         } catch (error) {

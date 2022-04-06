@@ -1,4 +1,5 @@
 import { withIronSessionSsr } from 'iron-session/next';
+import type { RequestState } from '@self.id/framework';
 import { useEffect, useState } from 'react';
 import Head from 'next/head';
 import Link from 'next/link';
@@ -10,9 +11,15 @@ import { useStore } from 'lib/store';
 import usePrevious from 'utils/usePrevious';
 import { queryParamToArray } from 'utils/url';
 import useBlockBacklinks from 'editor/backlinks/useBlockBacklinks';
-import checkProtectedPageAuth from 'utils/checkProtectedPageAuth';
+// import checkProtectedPageAuth from 'utils/checkProtectedPageAuth';
+import getRequestState from 'utils/getRequestState';
 
-export default function NotePage() {
+type Props = {
+  did: string;
+  state: RequestState;
+};
+
+export default function NotePage(props: Props) {
   const router = useRouter();
   const {
     query: { id: noteId, stack: stackQuery },
@@ -130,9 +137,29 @@ const getHighlightedPath = (url: string): { index: number; path: Path } | null =
 };
 
 export const getServerSideProps = withIronSessionSsr(async function ({ params, req }) {
-  const { user, allowedDeck } = req.session;
-  const deckId = params?.deckId;
-  const authorized = await checkProtectedPageAuth(deckId, user, allowedDeck);
+  // const { user, allowedDeck } = req.session;
+  // const did = params?.did;
+  const did = params?.deckId;
+  const id = params?.id;
 
-  return authorized ? { props: {} } : { redirect: { destination: '/', permanent: false } };
+  // TODO: clean up when using did
+  if (did == null || typeof did !== 'string') {
+    return {
+      redirect: { destination: '/', permanent: false },
+    };
+  } else if (id == null) {
+    return {
+      redirect: { destination: `/${did}`, permanent: false },
+    };
+  }
+
+  // const getRequestState = await import('utils/getRequestState');
+  const cookie = req.headers.cookie;
+  return {
+    props: { did, id, state: await getRequestState(cookie, did) },
+  };
+
+  // const authorized = await checkProtectedPageAuth(deckId, user, allowedDeck);
+
+  // return authorized ? { props: {} } : { redirect: { destination: '/', permanent: false } };
 }, ironOptions);

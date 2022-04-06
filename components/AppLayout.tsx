@@ -4,11 +4,14 @@ import { useRouter } from 'next/router';
 import Head from 'next/head';
 import classNames from 'classnames';
 import colors from 'tailwindcss/colors';
+import { usePublicRecord, useViewerRecord } from '@self.id/framework';
 // import { useAccount } from 'wagmi';
 import { useStore, store, NoteTreeItem, getNoteTreeItem, Notes, SidebarTab } from 'lib/store';
 import supabase from 'lib/supabase';
-import { Note, Deck } from 'types/supabase';
+// import { Note, Deck } from 'types/supabase';
+import type { ModelTypes, NoteItem, Note } from 'types/ceramic';
 import { ProvideCurrentDeck } from 'utils/useCurrentDeck';
+import { useDeckRecord } from 'utils/ceramic-hooks';
 import useHotkeys from 'utils/useHotkeys';
 // import { useAuth } from 'utils/useAuth';
 import { isMobile } from 'utils/device';
@@ -30,6 +33,14 @@ export default function AppLayout(props: Props) {
   } = router;
   // const { user, isLoaded, signOut } = useAuth();
   // const [{ data: accountData }] = useAccount();
+  // let deckRecord: any;
+  // const deckRecord = useDeckRecord(deckId)
+  const deckRecord = useViewerRecord<ModelTypes, 'deck'>('deck');
+  // if (deckId && typeof deckId === 'string') {
+  //   // deckRecord = usePublicRecord<ModelTypes, 'deck'>('deck', deckId);
+  //   deckRecord = useDeckRecord(deckId);
+  // }
+
   const [isPageLoaded, setIsPageLoaded] = useState(false);
 
   // useEffect(() => {
@@ -56,21 +67,26 @@ export default function AppLayout(props: Props) {
   const setDeckId = useStore(state => state.setDeckId);
 
   const initData = useCallback(async () => {
-    setIsPageLoaded(true);
-    return;
-    // if (!deckId || typeof deckId !== 'string') {
+    // console.log('initData', deckId, deckRecord);
+    if (!deckId || typeof deckId !== 'string') {
+      return;
+    }
+
+    setDeckId(deckId);
+    // if (!deckRecord.content?.notes) {
     //   return;
     // }
 
-    // setDeckId(deckId);
-
+    // console.log('deckRecord', deckRecord);
+    // setIsPageLoaded(true);
+    // return;
     // const { data: notes } = await supabase
     //   .from<Note>('notes')
     //   .select('id, title, content, created_at, updated_at')
     //   .eq('deck_id', deckId)
     //   .order('title');
 
-    // // Redirect to most recent note or first note in database
+    // Redirect to most recent note or first note in database
     // if (router.pathname.match(/^\/app\/[^/]+$/i)) {
     //   const openNoteIds = store.getState().openNoteIds;
     //   if (openNoteIds.length > 0 && notes && notes.findIndex(note => note.id === openNoteIds[0]) > -1) {
@@ -82,45 +98,45 @@ export default function AppLayout(props: Props) {
     //   }
     // }
 
-    // if (!notes) {
-    //   setIsPageLoaded(true);
-    //   return;
-    // }
+    if (deckRecord.content && !deckRecord.content?.notes?.length) {
+      setIsPageLoaded(true);
+      return;
+    }
 
-    // // Set notes
-    // const notesAsObj = notes.reduce<Record<Note['id'], Note>>((acc, note) => {
-    //   acc[note.id] = note;
-    //   return acc;
-    // }, {});
-    // setNotes(notesAsObj);
+    const notes: NoteItem[] = deckRecord.content?.notes ?? [];
+    console.log('AppLayout notes: ', notes);
 
-    // // Set note tree
-    // const { data: deckData } = await supabase.from<Deck>('decks').select('note_tree').eq('id', deckId).single();
+    // Set notes
+    const notesAsObj = notes.reduce<Record<NoteItem['id'], Note>>((acc, note) => {
+      const noteId = note.id.replace('ceramic://', '');
+      // console.log(note.content);
+      acc[noteId] = { ...note, content: JSON.parse(note.content), id: noteId };
+      return acc;
+    }, {});
+    // console.log('AppLayout notesAsObj', notesAsObj);
+    setNotes(notesAsObj);
 
-    // if (deckData?.note_tree) {
-    //   const noteTree: NoteTreeItem[] = [...deckData.note_tree];
-    //   // This is a sanity check for removing notes in the noteTree that do not exist
-    //   removeNonexistentNotes(noteTree, notesAsObj);
-    //   // If there are notes that are not in the note tree, add them
-    //   // This is a sanity check to make sure there are no orphaned notes
-    //   for (const note of notes) {
-    //     if (getNoteTreeItem(noteTree, note.id) === null) {
-    //       noteTree.push({ id: note.id, children: [], collapsed: true });
-    //     }
-    //   }
-    //   // Use the note tree saved in the database
-    //   setNoteTree(noteTree);
-    // } else {
-    //   // No note tree in database, just use notes
-    //   setNoteTree(notes.map(note => ({ id: note.id, children: [], collapsed: true })));
-    // }
+    // Set note tree
+    if (deckRecord.content?.note_tree) {
+      const noteTree: NoteTreeItem[] = [...JSON.parse(deckRecord.content?.note_tree)];
+      // This is a sanity check for removing notes in the noteTree that do not exist
+      removeNonexistentNotes(noteTree, notesAsObj);
+      // If there are notes that are not in the note tree, add them
+      // This is a sanity check to make sure there are no orphaned notes
+      for (const note of notes) {
+        if (getNoteTreeItem(noteTree, note.id) === null) {
+          noteTree.push({ id: note.id, children: [], collapsed: true });
+        }
+      }
+      // Use the note tree saved in the database
+      setNoteTree(noteTree);
+    } else {
+      // No note tree in database, just use notes
+      setNoteTree(notes.map(note => ({ id: note.id.replace('ceramic://', ''), children: [], collapsed: true })));
+    }
 
-    // setIsPageLoaded(true);
+    setIsPageLoaded(true);
   }, [deckId, router, setNotes, setNoteTree, setDeckId]);
-
-  useEffect(() => {
-    initData();
-  }, []);
 
   // useEffect(() => {
   //   if (isLoaded && !user) {
@@ -131,6 +147,15 @@ export default function AppLayout(props: Props) {
   //     initData();
   //   }
   // }, [router, user, isLoaded, isPageLoaded, initData]);
+  useEffect(() => {
+    // TODO: get this working
+    console.log('in useEffect', isPageLoaded, deckRecord);
+    if (!isPageLoaded && deckRecord.content?.notes && !deckRecord.isLoading) {
+      initData();
+    } else if (!deckRecord.isLoading && deckRecord.content?.notes?.length) {
+      initData();
+    }
+  }, [isPageLoaded, deckRecord.content, deckRecord.isLoading, router, initData]);
 
   const [isFindOrCreateModalOpen, setIsFindOrCreateModalOpen] = useState(false);
   // const [isSettingsOpen, setIsSettingsOpen] = useState(false);
@@ -249,7 +274,8 @@ export default function AppLayout(props: Props) {
   );
 }
 
-const removeNonexistentNotes = (tree: NoteTreeItem[], notes: Notes) => {
+// const removeNonexistentNotes = (tree: NoteTreeItem[], notes: Notes) => {
+const removeNonexistentNotes = (tree: NoteTreeItem[], notes: any) => {
   for (let i = 0; i < tree.length; i++) {
     const item = tree[i];
     if (!notes[item.id]) {
