@@ -32,7 +32,6 @@ function FindOrCreateInput(props: Props, ref: ForwardedRef<HTMLInputElement>) {
   const {
     query: { deckId },
   } = router;
-  // const connect = useConnection<ModelTypes>()[1];
   const deck = useDeck(deckId as string);
 
   const [inputText, setInputText] = useState('');

@@ -4,8 +4,9 @@ import { ReactEditor, useSlate } from 'slate-react';
 import type { TablerIcon } from '@tabler/icons';
 import { IconUnlink, IconLink, IconFilePlus } from '@tabler/icons';
 import { v4 as uuidv4 } from 'uuid';
+import { toast } from 'react-toastify';
+import { useDeck } from 'utils/ceramic-hooks';
 import { useCurrentDeck } from 'utils/useCurrentDeck';
-import upsertNote from 'lib/api/upsertNote';
 import { insertExternalLink, insertNoteLink, removeLink } from 'editor/formatting';
 import { isUrl } from 'utils/url';
 import useNoteSearch from 'utils/useNoteSearch';
@@ -34,7 +35,10 @@ type Props = {
 
 export default function AddLinkPopover(props: Props) {
   const { addLinkPopoverState, setAddLinkPopoverState } = props;
-  const { deck } = useCurrentDeck();
+  const {
+    deck: { id: deckId },
+  } = useCurrentDeck();
+  const deck = useDeck(deckId as string);
   const inputRef = useRef<HTMLInputElement | null>(null);
   const [linkText, setLinkText] = useState<string>('');
   const editor = useSlate();
@@ -121,8 +125,21 @@ export default function AddLinkPopover(props: Props) {
       } else if (option.type === OptionType.NEW_NOTE) {
         // Add a new note and insert a link to it with the note title as the link text
         const noteId = uuidv4();
+        const newNote = {
+          id: noteId,
+          title: linkText,
+          content: JSON.stringify([{ id: uuidv4(), type: 'paragraph', children: [{ text: '' }] }]),
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+        };
+
         insertNoteLink(editor, noteId, linkText);
-        upsertNote({ id: noteId, deck_id: deck.id, title: linkText });
+
+        const success = await deck.addNote(newNote);
+        if (!success) {
+          toast.error(`There was an error creating the note ${linkText}.`);
+          return;
+        }
         Transforms.move(editor, { distance: 1, unit: 'offset' }); // Focus after the note link
       } else if (option.type === OptionType.REMOVE_LINK) {
         // Remove the link

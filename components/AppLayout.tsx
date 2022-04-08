@@ -4,10 +4,10 @@ import { useRouter } from 'next/router';
 import Head from 'next/head';
 import classNames from 'classnames';
 import colors from 'tailwindcss/colors';
-import { usePublicRecord, useViewerRecord, useConnection, useViewerID } from '@self.id/framework';
+import { useViewerRecord, useConnection, useViewerID } from '@self.id/framework';
 // import { useAccount } from 'wagmi';
 import { useStore, store, NoteTreeItem, getNoteTreeItem, Notes, SidebarTab } from 'lib/store';
-import supabase from 'lib/supabase';
+// import supabase from 'lib/supabase';
 // import { Note, Deck } from 'types/supabase';
 import type { Deck, ModelTypes, NoteItem } from 'types/ceramic';
 import { ProvideCurrentDeck } from 'utils/useCurrentDeck';
@@ -35,10 +35,9 @@ export default function AppLayout(props: Props) {
   // const [{ data: accountData }] = useAccount();
   // let deckRecord: any;
   // const deckRecord = useDeckRecord(deckId)
-  const deckRecord = useViewerRecord<ModelTypes, 'deck'>('deck');
+  const deckRecord = useViewerRecord<ModelTypes>('deck');
   const [connection] = useConnection();
   const viewerID = useViewerID();
-  // TODO: type
   const deck = useDeck(deckId as string);
 
   const [isPageLoaded, setIsPageLoaded] = useState(false);
@@ -52,15 +51,15 @@ export default function AppLayout(props: Props) {
   //   };
   // }, [accountData?.connector, signOut]);
 
-  // useEffect(() => {
-  //   if (!isPageLoaded && isLoaded && user) {
-  //     // Use user's specific store and rehydrate data
-  //     useStore.persist.setOptions({
-  //       name: `deck-storage-${user.id}`,
-  //     });
-  //     useStore.persist.rehydrate();
-  //   }
-  // }, [isPageLoaded, isLoaded, user]);
+  useEffect(() => {
+    if (!isPageLoaded && viewerID?.id) {
+      // Use user's specific store and rehydrate data
+      useStore.persist.setOptions({
+        name: `deck-storage-${viewerID?.id.slice(6)}`,
+      });
+      useStore.persist.rehydrate();
+    }
+  }, [isPageLoaded, viewerID]);
 
   const setNotes = useStore(state => state.setNotes);
   const setNoteTree = useStore(state => state.setNoteTree);
@@ -72,15 +71,6 @@ export default function AppLayout(props: Props) {
     }
 
     setDeckId(deckId);
-
-    // console.log('deckRecord', deckRecord);
-    // setIsPageLoaded(true);
-    // return;
-    // const { data: notes } = await supabase
-    //   .from<Note>('notes')
-    //   .select('id, title, content, created_at, updated_at')
-    //   .eq('deck_id', deckId)
-    //   .order('title');
 
     // Redirect to most recent note or first note in database
     // if (router.pathname.match(/^\/app\/[^/]+$/i)) {
@@ -95,7 +85,6 @@ export default function AppLayout(props: Props) {
     // }
 
     const notes: NoteItem[] = deck.content?.notes ?? [];
-    console.log('notes', notes);
 
     if (!notes.length) {
       setIsPageLoaded(true);
@@ -107,13 +96,11 @@ export default function AppLayout(props: Props) {
       acc[note.id] = { ...note, content: JSON.parse(note.content) };
       return acc;
     }, {});
-
-    // console.log('calling setNotes with:', notesAsObj);
     setNotes(notesAsObj);
 
     // Set note tree
-    if (deckRecord.content?.note_tree) {
-      const noteTree: NoteTreeItem[] = [...JSON.parse(deckRecord.content?.note_tree)];
+    if (deck.content?.note_tree) {
+      const noteTree: NoteTreeItem[] = [...JSON.parse(deck.content?.note_tree)];
       // This is a sanity check for removing notes in the noteTree that do not exist
       removeNonexistentNotes(noteTree, notesAsObj);
       // If there are notes that are not in the note tree, add them
@@ -127,36 +114,24 @@ export default function AppLayout(props: Props) {
       setNoteTree(noteTree);
     } else {
       // No note tree in database, just use notes
-      setNoteTree(notes.map(note => ({ id: note.id.replace('ceramic://', ''), children: [], collapsed: true })));
+      setNoteTree(notes.map(note => ({ id: note.id, children: [], collapsed: true })));
     }
 
     setIsPageLoaded(true);
-  }, [deckId, router, setNotes, setNoteTree, setDeckId]);
+  }, [deckId, deck, router, setNotes, setNoteTree, setDeckId]);
 
-  // useEffect(() => {
-  //   if (isLoaded && !user) {
-  //     // Redirect to root page if there is no user logged in
-  //     router.replace('/');
-  //   } else if (!isPageLoaded && isLoaded && user) {
-  //     // Initialize data if there is a user and the data has not been initialized yet
-  //     initData();
-  //   }
-  // }, [router, user, isLoaded, isPageLoaded, initData]);
   useEffect(() => {
-    // TODO: get this working
+    // TODO: finetune
     console.log('AppLayout useEffect', isPageLoaded, connection, deck);
-    if (!deck.isLoading && typeof deck.content !== 'undefined') {
-      initData();
-    } else {
+    if (!viewerID?.id) {
+      // Redirect to root page if there is no user logged in
+      router.replace('/');
+    } else if (!isPageLoaded && !deck.isLoading) {
+      // Initialize data if there is a user and the data has not been initialized yet
       initData();
     }
-
-    // if (!isPageLoaded && deckRecord.content?.notes && !deckRecord.isLoading) {
-    //   initData();
-    // } else if (!deckRecord.isLoading && deckRecord.content?.notes?.length) {
-    //   initData();
-    // }
-  }, [isPageLoaded, deck, router, initData]);
+    // initData();
+  }, [router, viewerID, deck, isPageLoaded, initData]);
 
   const [isFindOrCreateModalOpen, setIsFindOrCreateModalOpen] = useState(false);
   // const [isSettingsOpen, setIsSettingsOpen] = useState(false);

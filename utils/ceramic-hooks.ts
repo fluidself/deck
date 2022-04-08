@@ -198,13 +198,15 @@ export function useNote(did: string, id: string) {
   };
 }
 
-// did: string
 export function useDeck(id: string) {
   const [connection, connect] = useConnection<ModelTypes>();
   const deckDoc = useTileDoc<Deck>(id);
 
   const content = deckDoc.content;
   const isEditable = deckDoc.isController;
+
+  // TODO: DRY up these?
+  // TODO: handle errors / loading state?
 
   const addNote = useCallback(
     async newNote => {
@@ -216,10 +218,8 @@ export function useDeck(id: string) {
 
         return true;
       } catch (error) {
-        // TODO: handle
         console.error(error);
         return false;
-        // setEditionState({ status: 'failed', error });
       }
     },
     [deckDoc, connection, connect],
@@ -232,15 +232,13 @@ export function useDeck(id: string) {
 
       try {
         const otherNotes = deckDoc.content.notes.filter(note => note.id !== noteUpdate.id);
-
+        console.log('noteUpdate', noteUpdate);
         await deckDoc.update({ ...deckDoc.content, notes: [...otherNotes, noteUpdate] });
 
         return true;
       } catch (error) {
-        // TODO: handle
         console.error(error);
         return false;
-        // setEditionState({ status: 'failed', error });
       }
     },
     [deckDoc, connection, connect],
@@ -258,14 +256,26 @@ export function useDeck(id: string) {
 
         return true;
       } catch (error) {
-        // TODO: handle
         console.error(error);
         return false;
-        // setEditionState({ status: 'failed', error });
       }
     },
     [deckDoc, connection, connect],
   );
+
+  const updateNoteTree = useCallback(async () => {
+    if (connection.status !== 'connected') await connect();
+    if (!deckDoc.content?.notes?.length) return false;
+
+    try {
+      await deckDoc.update({ ...deckDoc.content, note_tree: JSON.stringify(store.getState().noteTree) });
+
+      return true;
+    } catch (error) {
+      console.error(error);
+      return false;
+    }
+  }, [deckDoc, connection, connect]);
 
   // const update = useCallback(
   //   async editingText => {
@@ -323,5 +333,6 @@ export function useDeck(id: string) {
     addNote,
     updateNote,
     deleteNote,
+    updateNoteTree,
   };
 }
