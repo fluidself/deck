@@ -7,7 +7,7 @@ import getRequestState from 'utils/getRequestState';
 import { useStore } from 'lib/store';
 
 type Props = {
-  did: string;
+  deckId: string;
   state: RequestState;
 };
 
@@ -25,10 +25,10 @@ export default function DeckHome(props: Props) {
 export const getServerSideProps = withIronSessionSsr(async function ({ params, req }) {
   // const { user, allowedDeck } = req.session;
   // const did = params?.did;
-  const did = params?.deckId;
+  const deckId = params?.deckId;
 
   // TODO: clean up when using did
-  if (did == null || typeof did !== 'string') {
+  if (deckId == null || typeof deckId !== 'string') {
     return {
       redirect: { destination: '/', permanent: false },
     };
@@ -37,7 +37,7 @@ export const getServerSideProps = withIronSessionSsr(async function ({ params, r
   // const getRequestState = await import('utils/getRequestState');
   const cookie = req.headers.cookie;
   return {
-    props: { did, state: await getRequestState(cookie, did) },
+    props: { deckId, state: await getRequestState(cookie) },
   };
 
   // const authorized = await checkProtectedPageAuth(deckId, user, allowedDeck);

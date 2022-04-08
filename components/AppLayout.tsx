@@ -4,14 +4,14 @@ import { useRouter } from 'next/router';
 import Head from 'next/head';
 import classNames from 'classnames';
 import colors from 'tailwindcss/colors';
-import { usePublicRecord, useViewerRecord } from '@self.id/framework';
+import { usePublicRecord, useViewerRecord, useConnection, useViewerID } from '@self.id/framework';
 // import { useAccount } from 'wagmi';
 import { useStore, store, NoteTreeItem, getNoteTreeItem, Notes, SidebarTab } from 'lib/store';
 import supabase from 'lib/supabase';
 // import { Note, Deck } from 'types/supabase';
-import type { ModelTypes, NoteItem, Note } from 'types/ceramic';
+import type { Deck, ModelTypes, NoteItem } from 'types/ceramic';
 import { ProvideCurrentDeck } from 'utils/useCurrentDeck';
-import { useDeckRecord } from 'utils/ceramic-hooks';
+import { useDeck } from 'utils/ceramic-hooks';
 import useHotkeys from 'utils/useHotkeys';
 // import { useAuth } from 'utils/useAuth';
 import { isMobile } from 'utils/device';
@@ -36,10 +36,10 @@ export default function AppLayout(props: Props) {
   // let deckRecord: any;
   // const deckRecord = useDeckRecord(deckId)
   const deckRecord = useViewerRecord<ModelTypes, 'deck'>('deck');
-  // if (deckId && typeof deckId === 'string') {
-  //   // deckRecord = usePublicRecord<ModelTypes, 'deck'>('deck', deckId);
-  //   deckRecord = useDeckRecord(deckId);
-  // }
+  const [connection] = useConnection();
+  const viewerID = useViewerID();
+  // TODO: type
+  const deck = useDeck(deckId as string);
 
   const [isPageLoaded, setIsPageLoaded] = useState(false);
 
@@ -67,15 +67,11 @@ export default function AppLayout(props: Props) {
   const setDeckId = useStore(state => state.setDeckId);
 
   const initData = useCallback(async () => {
-    // console.log('initData', deckId, deckRecord);
     if (!deckId || typeof deckId !== 'string') {
       return;
     }
 
     setDeckId(deckId);
-    // if (!deckRecord.content?.notes) {
-    //   return;
-    // }
 
     // console.log('deckRecord', deckRecord);
     // setIsPageLoaded(true);
@@ -98,22 +94,21 @@ export default function AppLayout(props: Props) {
     //   }
     // }
 
-    if (deckRecord.content && !deckRecord.content?.notes?.length) {
+    const notes: NoteItem[] = deck.content?.notes ?? [];
+    console.log('notes', notes);
+
+    if (!notes.length) {
       setIsPageLoaded(true);
       return;
     }
 
-    const notes: NoteItem[] = deckRecord.content?.notes ?? [];
-    console.log('AppLayout notes: ', notes);
-
     // Set notes
-    const notesAsObj = notes.reduce<Record<NoteItem['id'], Note>>((acc, note) => {
-      const noteId = note.id.replace('ceramic://', '');
-      // console.log(note.content);
-      acc[noteId] = { ...note, content: JSON.parse(note.content), id: noteId };
+    const notesAsObj = notes.reduce<Record<NoteItem['id'], NoteItem>>((acc, note) => {
+      acc[note.id] = { ...note, content: JSON.parse(note.content) };
       return acc;
     }, {});
-    // console.log('AppLayout notesAsObj', notesAsObj);
+
+    // console.log('calling setNotes with:', notesAsObj);
     setNotes(notesAsObj);
 
     // Set note tree
@@ -149,13 +144,19 @@ export default function AppLayout(props: Props) {
   // }, [router, user, isLoaded, isPageLoaded, initData]);
   useEffect(() => {
     // TODO: get this working
-    console.log('in useEffect', isPageLoaded, deckRecord);
-    if (!isPageLoaded && deckRecord.content?.notes && !deckRecord.isLoading) {
+    console.log('AppLayout useEffect', isPageLoaded, connection, deck);
+    if (!deck.isLoading && typeof deck.content !== 'undefined') {
       initData();
-    } else if (!deckRecord.isLoading && deckRecord.content?.notes?.length) {
+    } else {
       initData();
     }
-  }, [isPageLoaded, deckRecord.content, deckRecord.isLoading, router, initData]);
+
+    // if (!isPageLoaded && deckRecord.content?.notes && !deckRecord.isLoading) {
+    //   initData();
+    // } else if (!deckRecord.isLoading && deckRecord.content?.notes?.length) {
+    //   initData();
+    // }
+  }, [isPageLoaded, deck, router, initData]);
 
   const [isFindOrCreateModalOpen, setIsFindOrCreateModalOpen] = useState(false);
   // const [isSettingsOpen, setIsSettingsOpen] = useState(false);

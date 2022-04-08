@@ -24,7 +24,7 @@ const updateBacklinks = async (newTitle: string, noteId: string) => {
 
     let newBacklinkContent = note.content;
     for (const match of backlink.matches) {
-      newBacklinkContent = produce(newBacklinkContent, (draftState) => {
+      newBacklinkContent = produce(newBacklinkContent, draftState => {
         // Path should not be empty
         const path = match.path;
         if (path.length <= 0) {
@@ -38,10 +38,7 @@ const updateBacklinks = async (newTitle: string, noteId: string) => {
         }
 
         // Assert that linkNode is a note link
-        if (
-          !Element.isElement(linkNode) ||
-          linkNode.type !== ElementType.NoteLink
-        ) {
+        if (!Element.isElement(linkNode) || linkNode.type !== ElementType.NoteLink) {
           return;
         }
 
@@ -66,12 +63,20 @@ const updateBacklinks = async (newTitle: string, noteId: string) => {
   }
 
   // It would be better if we could consolidate the update requests into one request
-  // See https://github.com/supabase/supabase-js/issues/156
-  const promises = [];
+  const promisePayloads = [];
   for (const data of updateData) {
-    promises.push(updateNote(data));
+    const note = notes[data.id];
+
+    promisePayloads.push({
+      ...data,
+      title: note.title,
+      content: JSON.stringify(data.content),
+      created_at: note.created_at,
+      updated_at: new Date().toISOString(),
+    });
   }
-  await Promise.all(promises);
+
+  return promisePayloads;
 };
 
 export default updateBacklinks;

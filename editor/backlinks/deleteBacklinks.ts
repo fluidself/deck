@@ -1,7 +1,7 @@
 import { createEditor, Editor, Element, Transforms } from 'slate';
 import { ElementType } from 'types/slate';
 import { Note } from 'types/supabase';
-import supabase from 'lib/supabase';
+import type { NoteItem } from 'types/ceramic';
 import { store } from 'lib/store';
 import { computeLinkedBacklinks } from './useBacklinks';
 
@@ -25,11 +25,7 @@ const deleteBacklinks = async (noteId: string) => {
 
     Transforms.unwrapNodes(editor, {
       at: [],
-      match: (n) =>
-        !Editor.isEditor(n) &&
-        Element.isElement(n) &&
-        n.type === ElementType.NoteLink &&
-        n.noteId === noteId,
+      match: n => !Editor.isEditor(n) && Element.isElement(n) && n.type === ElementType.NoteLink && n.noteId === noteId,
     });
 
     updateData.push({
@@ -44,17 +40,20 @@ const deleteBacklinks = async (noteId: string) => {
   }
 
   // It would be better if we could consolidate the update requests into one request
-  // See https://github.com/supabase/supabase-js/issues/156
-  const promises = [];
+  const promisePayloads = [];
   for (const data of updateData) {
-    promises.push(
-      supabase
-        .from<Note>('notes')
-        .update({ content: data.content, updated_at: new Date().toISOString() })
-        .eq('id', data.id)
-    );
+    const note = notes[data.id];
+
+    promisePayloads.push({
+      ...data,
+      title: note.title,
+      content: JSON.stringify(data.content),
+      created_at: note.created_at,
+      updated_at: new Date().toISOString(),
+    });
   }
-  await Promise.all(promises);
+
+  return promisePayloads;
 };
 
 export default deleteBacklinks;

@@ -6,9 +6,10 @@ import type { PublicRecord } from '@self.id/framework';
 // import { useResetAtom } from 'jotai/utils';
 import { useCallback, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from 'react-query';
+import { store } from 'lib/store';
 
 // import { draftNoteAtom, editionStateAtom } from './state';
-import type { EditionState, ModelTypes, Note, Deck } from 'types/ceramic';
+import type { ModelTypes, Deck } from 'types/ceramic';
 
 export type TileDoc<ContentType> = {
   isLoading: boolean;
@@ -194,5 +195,133 @@ export function useNote(did: string, id: string) {
     // setEditingText,
     // toggleEditing,
     update,
+  };
+}
+
+// did: string
+export function useDeck(id: string) {
+  const [connection, connect] = useConnection<ModelTypes>();
+  const deckDoc = useTileDoc<Deck>(id);
+
+  const content = deckDoc.content;
+  const isEditable = deckDoc.isController;
+
+  const addNote = useCallback(
+    async newNote => {
+      if (connection.status !== 'connected') await connect();
+      if (!deckDoc.content?.notes?.length || !newNote) return false;
+
+      try {
+        await deckDoc.update({ ...deckDoc.content, notes: [...deckDoc.content.notes, newNote] });
+
+        return true;
+      } catch (error) {
+        // TODO: handle
+        console.error(error);
+        return false;
+        // setEditionState({ status: 'failed', error });
+      }
+    },
+    [deckDoc, connection, connect],
+  );
+
+  const updateNote = useCallback(
+    async noteUpdate => {
+      if (connection.status !== 'connected') await connect();
+      if (!deckDoc.content?.notes?.length || !noteUpdate) return false;
+
+      try {
+        const otherNotes = deckDoc.content.notes.filter(note => note.id !== noteUpdate.id);
+
+        await deckDoc.update({ ...deckDoc.content, notes: [...otherNotes, noteUpdate] });
+
+        return true;
+      } catch (error) {
+        // TODO: handle
+        console.error(error);
+        return false;
+        // setEditionState({ status: 'failed', error });
+      }
+    },
+    [deckDoc, connection, connect],
+  );
+
+  const deleteNote = useCallback(
+    async noteId => {
+      if (connection.status !== 'connected') await connect();
+      if (!deckDoc.content?.notes?.length || !noteId) return false;
+
+      try {
+        const remainingNotes = deckDoc.content.notes.filter(note => note.id !== noteId);
+
+        await deckDoc.update({ ...deckDoc.content, notes: remainingNotes, note_tree: JSON.stringify(store.getState().noteTree) });
+
+        return true;
+      } catch (error) {
+        // TODO: handle
+        console.error(error);
+        return false;
+        // setEditionState({ status: 'failed', error });
+      }
+    },
+    [deckDoc, connection, connect],
+  );
+
+  // const update = useCallback(
+  //   async editingText => {
+  //     console.log('deckDoc', deckDoc);
+  //     console.log(editingText);
+
+  //     if (deckDoc.content == null || !noteItem) {
+  //       return false;
+  //     }
+  //     // setEditionState({ status: 'loading' });
+
+  //     try {
+  //       // todo: viewerID to avoid this connect call?
+  //       const selfID = await connect();
+  //       if (selfID == null) {
+  //         // setEditionState({ status: 'pending' });
+  //         return false;
+  //       }
+
+  //       // if (editingText !== noteDoc.content.content) {
+  //       const updatedAt = new Date().toISOString();
+  //       const updatedContent = JSON.stringify(editingText);
+  //       await noteDoc.update({ ...noteDoc.content, updated_at: updatedAt, content: updatedContent });
+  //       const notes = (deckRecord.content?.notes ?? []).filter(item => item.id !== `ceramic://${id}`);
+  //       noteItem.updated_at = updatedAt;
+  //       noteItem.content = updatedContent;
+  //       console.log('filtered notes', notes);
+  //       console.log('noteItem', noteItem);
+  //       await deckRecord.set({ ...deckRecord.content, notes: [...notes, noteItem] });
+  //       // }
+  //       setEditionState(null);
+  //       return true;
+  //     } catch (error) {
+  //       setEditionState({ status: 'failed', error });
+  //     }
+  //   },
+  //   [connect, editionState, noteDoc, setEditionState],
+  // );
+
+  return {
+    isEditable,
+    // isEditing,
+    isError: deckDoc.isError,
+    isLoading: deckDoc.isLoading,
+    isMutable: deckDoc.isMutable,
+    isMutating: deckDoc.isMutating,
+    // isValid,
+    content,
+    // editingText,
+    error: deckDoc.error,
+    // resetEditingText,
+    // setEditingText,
+    // toggleEditing,
+    // update,
+    addNote,
+    updateNote,
+    deleteNote,
   };
 }

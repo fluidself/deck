@@ -1,13 +1,5 @@
 import { useMemo } from 'react';
-import {
-  createEditor,
-  Editor,
-  Element,
-  Node,
-  Descendant,
-  Path,
-  Text,
-} from 'slate';
+import { createEditor, Editor, Element, Node, Descendant, Path, Text } from 'slate';
 import { ElementType, FormattedText } from 'types/slate';
 import type { Notes } from 'lib/store';
 import { useStore } from 'lib/store';
@@ -30,19 +22,13 @@ export type Backlink = {
 
 export default function useBacklinks(noteId: string) {
   const [notes] = useDebounce(
-    useStore((state) => state.notes),
-    DEBOUNCE_MS
+    useStore(state => state.notes),
+    DEBOUNCE_MS,
   );
 
-  const linkedBacklinks = useMemo(
-    () => computeLinkedBacklinks(notes, noteId),
-    [notes, noteId]
-  );
+  const linkedBacklinks = useMemo(() => computeLinkedBacklinks(notes, noteId), [notes, noteId]);
 
-  const unlinkedBacklinks = useMemo(
-    () => computeUnlinkedBacklinks(notes, notes[noteId].title),
-    [notes, noteId]
-  );
+  const unlinkedBacklinks = useMemo(() => computeUnlinkedBacklinks(notes, notes[noteId].title), [notes, noteId]);
 
   return { linkedBacklinks, unlinkedBacklinks };
 }
@@ -51,10 +37,7 @@ export default function useBacklinks(noteId: string) {
  * Searches the notes array for note links to the given noteId
  * and returns an array of the matches.
  */
-export const computeLinkedBacklinks = (
-  notes: Notes,
-  noteId: string
-): Backlink[] => {
+export const computeLinkedBacklinks = (notes: Notes, noteId: string): Backlink[] => {
   const result: Backlink[] = [];
   for (const note of Object.values(notes)) {
     const matches = computeLinkedMatches(note.content, noteId);
@@ -73,10 +56,7 @@ export const computeLinkedBacklinks = (
  * Searches the notes array for text matches to the given noteTitle
  * and returns an array of the matches.
  */
-const computeUnlinkedBacklinks = (
-  notes: Notes,
-  noteTitle: string | undefined
-): Backlink[] => {
+const computeUnlinkedBacklinks = (notes: Notes, noteTitle: string | undefined): Backlink[] => {
   if (!noteTitle) {
     return [];
   }
@@ -106,11 +86,7 @@ const computeLinkedMatches = (nodes: Descendant[], noteId: string) => {
   // Find note link elements that match noteId
   const matchingElements = Editor.nodes(editor, {
     at: [],
-    match: (n) =>
-      Element.isElement(n) &&
-      n.type === ElementType.NoteLink &&
-      n.noteId === noteId &&
-      !!Node.string(n), // We ignore note links with empty link text
+    match: n => Element.isElement(n) && n.type === ElementType.NoteLink && n.noteId === noteId && !!Node.string(n), // We ignore note links with empty link text
   });
 
   const result: BacklinkMatch[] = [];
@@ -118,7 +94,7 @@ const computeLinkedMatches = (nodes: Descendant[], noteId: string) => {
     // Get the line element
     const block = Editor.above<Element>(editor, {
       at: path,
-      match: (n) => Editor.isBlock(editor, n),
+      match: n => Editor.isBlock(editor, n),
     });
 
     if (block) {
@@ -136,8 +112,7 @@ const computeUnlinkedMatches = (nodes: Descendant[], noteTitle: string) => {
   // Find leaves that have noteTitle in them
   const matchingLeaves = Editor.nodes<FormattedText>(editor, {
     at: [],
-    match: (n) =>
-      Text.isText(n) && n.text.toLowerCase().includes(noteTitle.toLowerCase()),
+    match: n => Text.isText(n) && n.text.toLowerCase().includes(noteTitle.toLowerCase()),
   });
 
   const result: BacklinkMatch[] = [];
@@ -151,7 +126,7 @@ const computeUnlinkedMatches = (nodes: Descendant[], noteTitle: string) => {
     // Get the line element
     const block = Editor.above<Element>(editor, {
       at: path,
-      match: (n) => Editor.isBlock(editor, n),
+      match: n => Editor.isBlock(editor, n),
     });
 
     if (block) {

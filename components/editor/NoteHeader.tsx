@@ -11,13 +11,14 @@ import {
   IconCornerDownRight,
   IconSend,
 } from '@tabler/icons';
-import { AvatarPlaceholder, useConnection, useViewerID, useViewerRecord } from '@self.id/framework';
+import { AvatarPlaceholder, useViewerID, useViewerRecord } from '@self.id/framework';
 import { getProfileInfo } from 'utils/getProfileInfo';
 import { usePopper } from 'react-popper';
 import { saveAs } from 'file-saver';
 import JSZip from 'jszip';
 import useSWR from 'swr';
 import { useRouter } from 'next/router';
+import { toast } from 'react-toastify';
 import Portal from 'components/Portal';
 import { useCurrentNote } from 'utils/useCurrentNote';
 import { store, useStore } from 'lib/store';
@@ -25,8 +26,6 @@ import serialize from 'editor/serialization/serialize';
 import { Note } from 'types/supabase';
 import useImport from 'utils/useImport';
 import { queryParamToArray } from 'utils/url';
-import { addEllipsis } from 'utils/string';
-// import { useAuth } from 'utils/useAuth';
 import { useCurrentDeck } from 'utils/useCurrentDeck';
 import selectDecks from 'lib/api/selectDecks';
 import Tooltip from 'components/Tooltip';
@@ -36,13 +35,13 @@ import useDeleteNote from 'utils/useDeleteNote';
 import NoteMetadata from 'components/NoteMetadata';
 import MoveToModal from 'components/MoveToModal';
 import MintNFTModal from 'components/MintNFTModal';
-import Identicon from 'components/home/Identicon';
 import { NoteHeaderDivider } from './NoteHeaderDivider';
 // import { NFTIcon } from './NFTIcon';
 
 export default function NoteHeader() {
   const currentNote = useCurrentNote();
   const onImport = useImport();
+  const { onDeleteClick } = useDeleteNote();
   // const { user } = useAuth();
   // const { deck } = useCurrentDeck();
   // const { data: decks } = useSWR(user ? 'decks' : null, () => selectDecks(user?.id), { revalidateOnFocus: false });
@@ -125,7 +124,14 @@ export default function NoteHeader() {
     saveAs(zipContent, 'notes-export.zip');
   }, []);
 
-  const onDeleteClick = useDeleteNote(currentNote.id);
+  const onDeleteClickHandler = async () => {
+    const success = await onDeleteClick(currentNote.id);
+    if (!success) {
+      toast.error('Something went wrong deleting your note. Please try again later.');
+      return;
+    }
+    store.getState().deleteNote(currentNote.id);
+  };
 
   const [isMoveToModalOpen, setIsMoveToModalOpen] = useState(false);
   const onMoveToClick = useCallback(() => setIsMoveToModalOpen(true), []);
@@ -166,10 +172,8 @@ export default function NoteHeader() {
               </div>
               <NoteHeaderDivider /> */}
               <div className="px-2 pt-1 pb-1 text-sm text-gray-600 overflow-ellipsis dark:text-gray-400">
-                {/* {user ? addEllipsis(user?.id) : ''} */}
                 {getProfileInfo(viewerID.id, profileRecord.content).displayName}
               </div>
-              {/* <Identicon diameter={16} className="w-5 h-5 mr-2" /> */}
               {/* {avatarSrc ? <Avatar size="20px" src={avatarSrc} /> : <AvatarPlaceholder did={viewerID.id} size={20} />} */}
               <AvatarPlaceholder did={viewerID.id} size={20} />
               <NoteHeaderDivider />
@@ -212,7 +216,7 @@ export default function NoteHeader() {
                         <IconCloudDownload size={18} className="mr-1" />
                         <span>Export All</span>
                       </DropdownItem>
-                      <DropdownItem onClick={onDeleteClick} className="border-t dark:border-gray-700">
+                      <DropdownItem onClick={onDeleteClickHandler} className="border-t dark:border-gray-700">
                         <IconTrash size={18} className="mr-1" />
                         <span>Delete</span>
                       </DropdownItem>

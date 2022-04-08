@@ -6,10 +6,9 @@ import Editor from 'components/editor/Editor';
 import Title from 'components/editor/Title';
 import { store, useStore } from 'lib/store';
 import type { NoteUpdate } from 'lib/api/updateNote';
-import updateDbNote from 'lib/api/updateNote';
 import { ProvideCurrentNote } from 'utils/useCurrentNote';
 import { caseInsensitiveStringEqual } from 'utils/string';
-import { useNote } from 'utils/ceramic-hooks';
+import { useNote, useDeck } from 'utils/ceramic-hooks';
 import updateBacklinks from 'editor/backlinks/updateBacklinks';
 import Backlinks from './editor/backlinks/Backlinks';
 import NoteHeader from './editor/NoteHeader';
@@ -32,7 +31,7 @@ function Note(props: Props) {
   const {
     query: { deckId },
   } = router;
-  const ceramicNote = useNote(deckId as string, noteId);
+  const deck = useDeck(deckId as string);
   const updateNote = useStore(state => state.updateNote);
 
   const [syncState, setSyncState] = useState({
@@ -61,17 +60,26 @@ function Note(props: Props) {
     setSyncState(syncState => ({ ...syncState, isContentSynced: false }));
   }, []);
 
-  const handleNoteUpdate = useCallback(async (noteUpdate: NoteUpdate = { id: noteId }) => {
+  // const handleNoteUpdate = useCallback(async (noteUpdate: NoteUpdate = { id: noteId }) => {
+  const handleNoteUpdate = useCallback(async () => {
     const note = store.getState().notes[noteId];
-    if (!note) {
+    if (!note) return;
+
+    const updatedAt = new Date().toISOString();
+    const noteUpdate = {
+      ...note,
+      content: JSON.stringify(note.content),
+      updated_at: updatedAt,
+    };
+
+    const success = await deck.updateNote(noteUpdate);
+    if (!success) {
+      toast.error('Something went wrong saving your note. Please try again later.');
       return;
     }
-    console.log('note in store', note);
-    console.log('ceramicNote', ceramicNote);
-    // const noteUpdate: NoteUpdate = { id: noteId };
-    // const { error } = await updateDbNote(note);
-    const success = await ceramicNote.update(note.content);
-    console.log('success', success);
+    // TODO: UI does not reflect updated state immediately
+    // TODO: handle below requirements
+    // TODO: automatic saving?
 
     // if (error) {
     //   switch (error.code) {
@@ -86,8 +94,15 @@ function Note(props: Props) {
     //       return;
     //   }
     // }
+    store.getState().updateNote({ id: note.id, updated_at: updatedAt });
     if (note.title) {
-      await updateBacklinks(note.title, note.id);
+      const promisePayloads = await updateBacklinks(note.title, note.id);
+      const promises = [];
+      for (const payload of promisePayloads) {
+        promises.push(deck.updateNote(payload));
+      }
+
+      await Promise.all(promises);
     }
     // setSyncState({ isTitleSynced: true, isContentSynced: true });
   }, []);

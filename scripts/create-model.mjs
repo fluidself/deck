@@ -33,37 +33,37 @@ const manager = new ModelManager(ceramic);
 manager.addJSONModel(profileModel);
 
 // Create the schemas
-const noteSchemaID = await manager.createSchema('Note', {
-  $schema: 'http://json-schema.org/draft-07/schema#',
-  title: 'Note',
-  type: 'object',
-  required: ['title'],
-  properties: {
-    content: {
-      type: 'string',
-      title: 'content',
-      // default: '[{"type":"paragraph","children":[{"text":""}]}]',
-      maxLength: 10000,
-    },
-    title: {
-      type: 'string',
-      title: 'title',
-      maxLength: 60,
-    },
-    created_at: {
-      type: 'string',
-      format: 'date-time',
-      title: 'created_at',
-      maxLength: 30,
-    },
-    updated_at: {
-      type: 'string',
-      format: 'date-time',
-      title: 'updated_at',
-      maxLength: 30,
-    },
-  },
-});
+// const noteSchemaID = await manager.createSchema('Note', {
+//   $schema: 'http://json-schema.org/draft-07/schema#',
+//   title: 'Note',
+//   type: 'object',
+//   required: ['title'],
+//   properties: {
+//     content: {
+//       type: 'string',
+//       title: 'content',
+//       // default: '[{"type":"paragraph","children":[{"text":""}]}]',
+//       maxLength: 10000,
+//     },
+//     title: {
+//       type: 'string',
+//       title: 'title',
+//       maxLength: 60,
+//     },
+//     created_at: {
+//       type: 'string',
+//       format: 'date-time',
+//       title: 'created_at',
+//       maxLength: 30,
+//     },
+//     updated_at: {
+//       type: 'string',
+//       format: 'date-time',
+//       title: 'updated_at',
+//       maxLength: 30,
+//     },
+//   },
+// });
 const deckSchemaID = await manager.createSchema('Deck', {
   $schema: 'http://json-schema.org/draft-07/schema#',
   title: 'Deck',
@@ -71,6 +71,7 @@ const deckSchemaID = await manager.createSchema('Deck', {
   required: ['deck_name'],
   properties: {
     notes: {
+      // TODO: JSON.stringify this whole thing for encryption?
       type: 'array',
       title: 'notes',
       items: {
@@ -78,10 +79,8 @@ const deckSchemaID = await manager.createSchema('Deck', {
         title: 'NoteItem',
         properties: {
           id: {
-            $comment: `cip88:ref:${manager.getSchemaURL(noteSchemaID)}`,
             type: 'string',
-            pattern: '^ceramic://.+(\\?version=.+)?',
-            maxLength: 150,
+            maxLength: 36,
           },
           content: {
             type: 'string',
@@ -92,6 +91,18 @@ const deckSchemaID = await manager.createSchema('Deck', {
             type: 'string',
             title: 'title',
             maxLength: 60,
+          },
+          created_at: {
+            type: 'string',
+            format: 'date-time',
+            title: 'created_at',
+            maxLength: 30,
+          },
+          updated_at: {
+            type: 'string',
+            format: 'date-time',
+            title: 'updated_at',
+            maxLength: 30,
           },
         },
       },
