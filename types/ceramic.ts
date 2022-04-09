@@ -7,19 +7,6 @@ import type { BasicProfile } from '@datamodels/identity-profile-basic';
 //   | { status: 'failed'; error?: unknown }
 //   | { status: 'done'; notePage: string };
 
-// export type NoteForm = {
-//   content: string;
-//   title: string;
-// };
-
-// export type Note = {
-//   id: string;
-//   title: string;
-//   content: string;
-//   created_at: string;
-//   updated_at: string;
-// };
-
 export type NoteItem = {
   id: string;
   title: string;
@@ -29,19 +16,28 @@ export type NoteItem = {
 };
 
 export type Deck = {
+  notes: Array<NoteItem>;
+  note_tree: string;
+  access_params: string;
+};
+
+export type DeckItem = {
+  id: string;
   deck_name: string;
-  notes?: Array<NoteItem>;
-  note_tree?: string;
-  // access_params: string;
+};
+
+export type Decks = {
+  decks: Array<DeckItem>;
 };
 
 export type ModelTypes = ModelTypeAliases<
   {
     BasicProfile: BasicProfile;
     Deck: Deck;
+    Decks: Decks;
   },
   {
     basicProfile: 'BasicProfile';
-    deck: 'Deck';
+    decks: 'Decks';
   }
 >;

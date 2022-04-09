@@ -4,7 +4,7 @@ import { useRouter } from 'next/router';
 import Head from 'next/head';
 import classNames from 'classnames';
 import colors from 'tailwindcss/colors';
-import { useViewerRecord, useConnection, useViewerID } from '@self.id/framework';
+import { useViewerID } from '@self.id/framework';
 // import { useAccount } from 'wagmi';
 import { useStore, store, NoteTreeItem, getNoteTreeItem, Notes, SidebarTab } from 'lib/store';
 // import supabase from 'lib/supabase';
@@ -31,12 +31,6 @@ export default function AppLayout(props: Props) {
   const {
     query: { deckId },
   } = router;
-  // const { user, isLoaded, signOut } = useAuth();
-  // const [{ data: accountData }] = useAccount();
-  // let deckRecord: any;
-  // const deckRecord = useDeckRecord(deckId)
-  const deckRecord = useViewerRecord<ModelTypes>('deck');
-  const [connection] = useConnection();
   const viewerID = useViewerID();
   const deck = useDeck(deckId as string);
 
@@ -72,19 +66,19 @@ export default function AppLayout(props: Props) {
 
     setDeckId(deckId);
 
-    // Redirect to most recent note or first note in database
-    // if (router.pathname.match(/^\/app\/[^/]+$/i)) {
-    //   const openNoteIds = store.getState().openNoteIds;
-    //   if (openNoteIds.length > 0 && notes && notes.findIndex(note => note.id === openNoteIds[0]) > -1) {
-    //     router.replace(`/app/${deckId}/note/${openNoteIds[0]}`);
-    //     return;
-    //   } else if (notes && notes.length > 0) {
-    //     router.replace(`/app/${deckId}/note/${notes[0].id}`);
-    //     return;
-    //   }
-    // }
-
     const notes: NoteItem[] = deck.content?.notes ?? [];
+
+    // Redirect to most recent note or first note in database
+    if (router.pathname.match(/^\/app\/[^/]+$/i)) {
+      const openNoteIds = store.getState().openNoteIds;
+      if (openNoteIds.length > 0 && notes && notes.findIndex(note => note.id === openNoteIds[0]) > -1) {
+        router.replace(`/app/${deckId}/note/${openNoteIds[0]}`);
+        return;
+      } else if (notes && notes.length > 0) {
+        router.replace(`/app/${deckId}/note/${notes[0].id}`);
+        return;
+      }
+    }
 
     if (!notes.length) {
       setIsPageLoaded(true);
@@ -122,7 +116,7 @@ export default function AppLayout(props: Props) {
 
   useEffect(() => {
     // TODO: finetune
-    console.log('AppLayout useEffect', isPageLoaded, connection, deck);
+    // console.log('AppLayout useEffect', isPageLoaded, connection, deck, decksRecord, decksRecordPublic, decks);
     if (!viewerID?.id) {
       // Redirect to root page if there is no user logged in
       router.replace('/');
@@ -130,7 +124,6 @@ export default function AppLayout(props: Props) {
       // Initialize data if there is a user and the data has not been initialized yet
       initData();
     }
-    // initData();
   }, [router, viewerID, deck, isPageLoaded, initData]);
 
   const [isFindOrCreateModalOpen, setIsFindOrCreateModalOpen] = useState(false);

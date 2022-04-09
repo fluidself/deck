@@ -11,17 +11,15 @@ export function createRequestClient(cookie: string | undefined): RequestClient<M
   });
 }
 
-// TODO: necessary?
 export default async function getRequestState(cookie: string | undefined): Promise<RequestState> {
   const requestClient = createRequestClient(cookie);
-
   const prefetch = [];
+
   if (requestClient.viewerID != null) {
-    prefetch.push(requestClient.prefetch('deck', requestClient.viewerID));
+    // prefetch.push(requestClient.prefetch('basicProfile', requestClient.viewerID));
+    prefetch.push(requestClient.prefetch('decks', requestClient.viewerID));
   }
-  if (requestClient.viewerID != null) {
-    prefetch.push(requestClient.prefetch('basicProfile', requestClient.viewerID));
-  }
+
   await Promise.all([prefetch]);
 
   return requestClient.getState();

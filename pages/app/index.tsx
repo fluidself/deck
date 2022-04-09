@@ -5,7 +5,8 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/router';
 // import { useAccount } from 'wagmi';
 import useSWR from 'swr';
-import { useConnection, useViewerRecord, useCore } from '@self.id/framework';
+import { useConnection, useViewerRecord, usePublicRecord, useCore } from '@self.id/framework';
+import type { RequestState } from '@self.id/framework';
 import { toast } from 'react-toastify';
 import { v4 as uuidv4 } from 'uuid';
 import { ironOptions } from 'constants/iron-session';
@@ -16,8 +17,8 @@ import selectDecks from 'lib/api/selectDecks';
 import useIsMounted from 'utils/useIsMounted';
 import { useAuth } from 'utils/useAuth';
 import { AuthSig } from 'types/lit';
-import type { ModelTypes } from 'types/ceramic';
-import getRequestState from 'utils/getRequestState';
+import type { ModelTypes, DeckItem } from 'types/ceramic';
+import getRequestState, { createRequestClient } from 'utils/getRequestState';
 import HomeHeader from 'components/home/HomeHeader';
 import RequestDeckAccess from 'components/home/RequestDeckAccess';
 import ProvideDeckName from 'components/home/ProvideDeckName';
@@ -30,11 +31,11 @@ export default function AppHome() {
   // const { data: decks } = useSWR(user ? 'decks' : null, () => selectDecks(user?.id), { revalidateOnFocus: false });
   const [requestingAccess, setRequestingAccess] = useState<boolean>(false);
   const [creatingDeck, setCreatingDeck] = useState<boolean>(false);
-  // const deckRecord = useViewerRecord<ModelTypes, 'deck'>('deck');
+  const decksRecord = useViewerRecord<ModelTypes, 'decks'>('decks');
   const [connection, connect] = useConnection();
   const { dataModel } = useCore<ModelTypes>();
   // const isMounted = useIsMounted();
-  // console.log('deckRecord', deckRecord);
+  console.log('decksRecord', decksRecord);
 
   // useEffect(() => {
   //   const initLit = async () => {
@@ -58,24 +59,13 @@ export default function AppHome() {
   // }, [accountData?.connector, signOut]);
 
   const createNewDeck = async (deckName: string) => {
-    // console.log(connection.selfID);
-    // if (!deckRecord || !deckRecord.isLoadable) return;
+    if (!decksRecord || !decksRecord.isLoadable) return;
     if (connection.status !== 'connected') {
       await connect();
     }
 
-    // TODO: should there be helper hooks in util folder?
     try {
-      // const selfID = await connect();
-      // if (selfID == null) {
-      //   // setState({ status: 'pending' });
-      //   return;
-      // }
-
-      // console.log(deckRecord);
-      // await deckRecord.set({ deck_name: deckName, notes: [], note_tree: '' });
       const doc = await dataModel.createTile('Deck', {
-        deck_name: deckName,
         note_tree: '',
         notes: [
           {
@@ -88,25 +78,18 @@ export default function AppHome() {
         ],
       });
 
-      // // const deckPage = `/app/${selfID.id}`;
-      // // console.log('deckPage', deckPage);
-      // // setState({ status: 'done', notePage });
-      // // return deckPage;
+      if (!doc) {
+        toast.error(`There was an error creating the deck ${deckName}.`);
+        return;
+      }
+
+      const decks = decksRecord.content?.decks ?? [];
+      await decksRecord.set({ decks: [...decks, { id: doc.id.toUrl(), deck_name: deckName }] });
 
       router.push(`/app/${doc.id.toString()}`);
     } catch (error) {
-      // setState({ status: 'failed', error });
       console.error(error);
     }
-
-    // if (!deck) {
-    //   toast.error('There was an error creating the DECK');
-    //   return;
-    // }
-
-    // toast.success(`Successfully created ${deck.deck_name}`);
-    // setCreatingDeck(false);
-    // router.push(`/app/${deck.id}`);
   };
 
   // const verifyAccess = async (requestedDeck: string) => {
@@ -200,20 +183,22 @@ export default function AppHome() {
   );
 }
 
-// TODO: can I use req.session or something similar to persist user? useAuth provider/hook?
-// TODO: if user has notes, redirect to inner app
-// TODO: see server.js for data fetching
-
 export const getServerSideProps = withIronSessionSsr(async function ({ req }) {
-  console.log(req.headers.cookie);
-  // const { user } = req.session;
-  // const decks = await selectDecks(user?.id);
+  const cookie = req.headers.cookie;
+  const requestClient = createRequestClient(cookie);
+  let decks: DeckItem[] | undefined = undefined;
 
-  // if (decks.length) {
-  //   return { redirect: { destination: `/app/${decks[decks.length - 1].id}`, permanent: false } };
-  // } else {
-  //   return user ? { props: {} } : { redirect: { destination: '/', permanent: false } };
-  // }
+  if (requestClient.viewerID != null) {
+    const response = await requestClient.dataStore.get('decks', requestClient.viewerID);
+    decks = response?.decks;
 
-  return { props: {} };
+    if (decks) {
+      const newestDeck = decks[decks.length - 1];
+      return { redirect: { destination: `/app/${newestDeck.id.replace('ceramic://', '')}`, permanent: false } };
+    }
+
+    return { props: { state: await getRequestState(cookie) } };
+  }
+
+  return { redirect: { destination: '/', permanent: false } };
 }, ironOptions);

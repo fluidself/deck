@@ -15,7 +15,8 @@ import useBlockBacklinks from 'editor/backlinks/useBlockBacklinks';
 import getRequestState from 'utils/getRequestState';
 
 type Props = {
-  did: string;
+  deckId: string;
+  id: string;
   state: RequestState;
 };
 
@@ -137,12 +138,10 @@ const getHighlightedPath = (url: string): { index: number; path: Path } | null =
 };
 
 export const getServerSideProps = withIronSessionSsr(async function ({ params, req }) {
-  // const { user, allowedDeck } = req.session;
-  // const did = params?.did;
+  const cookie = req.headers.cookie;
   const deckId = params?.deckId;
   const id = params?.id;
 
-  // TODO: clean up when using did
   if (deckId == null || typeof deckId !== 'string') {
     return {
       redirect: { destination: '/', permanent: false },
@@ -153,13 +152,7 @@ export const getServerSideProps = withIronSessionSsr(async function ({ params, r
     };
   }
 
-  // const getRequestState = await import('utils/getRequestState');
-  const cookie = req.headers.cookie;
   return {
     props: { deckId, id, state: await getRequestState(cookie) },
   };
-
-  // const authorized = await checkProtectedPageAuth(deckId, user, allowedDeck);
-
-  // return authorized ? { props: {} } : { redirect: { destination: '/', permanent: false } };
 }, ironOptions);

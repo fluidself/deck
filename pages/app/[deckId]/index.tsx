@@ -23,24 +23,16 @@ export default function DeckHome(props: Props) {
 }
 
 export const getServerSideProps = withIronSessionSsr(async function ({ params, req }) {
-  // const { user, allowedDeck } = req.session;
-  // const did = params?.did;
+  const cookie = req.headers.cookie;
   const deckId = params?.deckId;
 
-  // TODO: clean up when using did
   if (deckId == null || typeof deckId !== 'string') {
     return {
       redirect: { destination: '/', permanent: false },
     };
   }
 
-  // const getRequestState = await import('utils/getRequestState');
-  const cookie = req.headers.cookie;
   return {
     props: { deckId, state: await getRequestState(cookie) },
   };
-
-  // const authorized = await checkProtectedPageAuth(deckId, user, allowedDeck);
-
-  // return authorized ? { props: {} } : { redirect: { destination: '/', permanent: false } };
 }, ironOptions);

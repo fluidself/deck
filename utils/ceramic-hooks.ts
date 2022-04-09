@@ -9,7 +9,7 @@ import { useMutation, useQuery, useQueryClient } from 'react-query';
 import { store } from 'lib/store';
 
 // import { draftNoteAtom, editionStateAtom } from './state';
-import type { ModelTypes, Deck } from 'types/ceramic';
+import type { ModelTypes, Deck, Decks } from 'types/ceramic';
 
 export type TileDoc<ContentType> = {
   isLoading: boolean;
@@ -67,8 +67,8 @@ export function useTileDoc<ContentType>(id: string): TileDoc<ContentType> {
   };
 }
 
-export function useDeckRecord(did: string): PublicRecord<Deck | null> {
-  return usePublicRecord<ModelTypes, 'deck'>('deck', did);
+export function useDeckRecord(did: string): PublicRecord<Decks | null> {
+  return usePublicRecord<ModelTypes, 'decks'>('decks', did);
 }
 
 // export function useDraftNote() {
