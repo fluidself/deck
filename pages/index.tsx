@@ -5,7 +5,7 @@ import { useEffect } from 'react';
 import { useRouter } from 'next/router';
 // import { useAccount } from 'wagmi';
 import { ironOptions } from 'constants/iron-session';
-import selectDecks from 'lib/api/selectDecks';
+import { createRequestClient } from 'utils/getRequestState';
 // import { useAuth } from 'utils/useAuth';
 import { EthereumIcon } from 'components/home/EthereumIcon';
 import Button from 'components/home/Button';
@@ -70,12 +70,20 @@ export default function Home() {
 }
 
 export const getServerSideProps = withIronSessionSsr(async function ({ req }) {
-  const { user } = req.session;
-  const decks = await selectDecks(user?.id);
+  const cookie = req.headers.cookie;
+  const requestClient = createRequestClient(cookie);
 
-  if (decks.length) {
-    return { redirect: { destination: `/app/${decks[decks.length - 1].id}`, permanent: false } };
-  } else {
-    return user ? { redirect: { destination: '/app', permanent: false } } : { props: {} };
+  if (requestClient.viewerID != null) {
+    const response = await requestClient.dataStore.get('decks', requestClient.viewerID);
+    const decks = response?.decks ?? [];
+
+    if (decks.length) {
+      const newestDeck = decks[decks.length - 1];
+      return { redirect: { destination: `/app/${newestDeck.id.replace('ceramic://', '')}`, permanent: false } };
+    }
+
+    return { redirect: { destination: '/app', permanent: false } };
   }
+
+  return { props: {} };
 }, ironOptions);

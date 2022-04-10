@@ -115,7 +115,7 @@ export default function AppLayout(props: Props) {
   }, [deckId, deck, router, setNotes, setNoteTree, setDeckId]);
 
   useEffect(() => {
-    // TODO: finetune
+    // TODO: finetune?
     // console.log('AppLayout useEffect', isPageLoaded, connection, deck, decksRecord, decksRecordPublic, decks);
     if (!viewerID?.id) {
       // Redirect to root page if there is no user logged in
@@ -124,7 +124,7 @@ export default function AppLayout(props: Props) {
       // Initialize data if there is a user and the data has not been initialized yet
       initData();
     }
-  }, [router, viewerID, deck, isPageLoaded, initData]);
+  }, [router, viewerID, deck.isLoading, deck.content, isPageLoaded, initData]);
 
   const [isFindOrCreateModalOpen, setIsFindOrCreateModalOpen] = useState(false);
   // const [isSettingsOpen, setIsSettingsOpen] = useState(false);
@@ -134,10 +134,6 @@ export default function AppLayout(props: Props) {
   const setIsSidebarOpen = useStore(state => state.setIsSidebarOpen);
   const setIsPageStackingOn = useStore(state => state.setIsPageStackingOn);
   const setSidebarTab = useStore(state => state.setSidebarTab);
-
-  const upsertNote = useStore(state => state.upsertNote);
-  const updateNote = useStore(state => state.updateNote);
-  const deleteNote = useStore(state => state.deleteNote);
 
   const hasHydrated = useStore(state => state._hasHydrated);
   useEffect(() => {
@@ -150,34 +146,6 @@ export default function AppLayout(props: Props) {
       setIsPageStackingOn(false);
     }
   }, [setIsSidebarOpen, setIsPageStackingOn, hasHydrated]);
-
-  // useEffect(() => {
-  //   if (!deckId) {
-  //     return;
-  //   }
-
-  //   // Subscribe to changes on the notes table for the current DECK
-  //   const subscription = supabase
-  //     .from<Note>(`notes:deck_id=eq.${deckId}`)
-  //     .on('*', payload => {
-  //       if (payload.eventType === 'INSERT') {
-  //         upsertNote(payload.new);
-  //       } else if (payload.eventType === 'UPDATE') {
-  //         // Don't update the note if it is currently open
-  //         const openNoteIds = store.getState().openNoteIds;
-  //         if (!openNoteIds.includes(payload.new.id)) {
-  //           updateNote(payload.new);
-  //         }
-  //       } else if (payload.eventType === 'DELETE') {
-  //         deleteNote(payload.old.id);
-  //       }
-  //     })
-  //     .subscribe();
-
-  //   return () => {
-  //     subscription.unsubscribe();
-  //   };
-  // }, [deckId, upsertNote, updateNote, deleteNote]);
 
   const hotkeys = useMemo(
     () => [

@@ -4,7 +4,7 @@ import { PublicID, useConnection, useCore, usePublicRecord, useViewerID, useView
 import type { PublicRecord } from '@self.id/framework';
 import { useCallback } from 'react';
 import { useMutation, useQuery, useQueryClient } from 'react-query';
-import { store } from 'lib/store';
+import { store, useStore } from 'lib/store';
 import type { ModelTypes, Deck, Decks } from 'types/ceramic';
 
 export type TileDoc<ContentType> = {
@@ -64,18 +64,21 @@ export function useTileDoc<ContentType>(id: string): TileDoc<ContentType> {
 }
 
 export function useDecksRecord(did: string): PublicRecord<Decks | null> {
-  return usePublicRecord<ModelTypes, 'decks'>('decks', did);
-  // return useViewerRecord<ModelTypes, 'decks'>('decks');
+  // return usePublicRecord<ModelTypes, 'decks'>('decks', did);
+  return useViewerRecord<ModelTypes, 'decks'>('decks');
 }
 
 export function useDeck(id: string) {
   const [connection, connect] = useConnection<ModelTypes>();
   const deckDoc = useTileDoc<Deck>(id);
 
+  const upsertNoteStore = useStore(state => state.upsertNote);
+  const updateNoteStore = useStore(state => state.updateNote);
+  const deleteNoteStore = useStore(state => state.deleteNote);
+
   const content = deckDoc.content;
   const isEditable = deckDoc.isController;
 
-  // TODO: DRY up these?
   // TODO: handle errors / loading state?
 
   const addNote = useCallback(
@@ -86,6 +89,7 @@ export function useDeck(id: string) {
       try {
         await deckDoc.update({ ...deckDoc.content, notes: [...deckDoc.content.notes, newNote] });
 
+        upsertNoteStore({ ...newNote, content: JSON.parse(newNote.content) });
         return true;
       } catch (error) {
         console.error(error);
@@ -110,6 +114,12 @@ export function useDeck(id: string) {
 
         await deckDoc.update({ ...deckDoc.content, notes: [...otherNotes, noteUpdate] });
 
+        // Don't update the note if it is currently open
+        const openNoteIds = store.getState().openNoteIds;
+        if (!openNoteIds.includes(noteUpdate.id)) {
+          updateNoteStore({ ...noteUpdate, content: JSON.parse(noteUpdate.content) });
+        }
+
         return { success: true };
       } catch (error) {
         console.error(error);
@@ -128,6 +138,8 @@ export function useDeck(id: string) {
         const remainingNotes = deckDoc.content.notes.filter(note => note.id !== noteId);
 
         await deckDoc.update({ ...deckDoc.content, notes: remainingNotes, note_tree: JSON.stringify(store.getState().noteTree) });
+
+        deleteNoteStore(noteId);
 
         return true;
       } catch (error) {
@@ -154,19 +166,12 @@ export function useDeck(id: string) {
 
   return {
     isEditable,
-    // isEditing,
     isError: deckDoc.isError,
     isLoading: deckDoc.isLoading,
     isMutable: deckDoc.isMutable,
     isMutating: deckDoc.isMutating,
-    // isValid,
     content,
-    // editingText,
     error: deckDoc.error,
-    // resetEditingText,
-    // setEditingText,
-    // toggleEditing,
-    // update,
     addNote,
     updateNote,
     deleteNote,

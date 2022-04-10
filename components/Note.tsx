@@ -2,6 +2,7 @@ import { memo, useCallback, useEffect, useMemo, useState } from 'react';
 import type { Path } from 'slate';
 import { toast } from 'react-toastify';
 import { useRouter } from 'next/router';
+import { v4 as uuidv4 } from 'uuid';
 import Editor from 'components/editor/Editor';
 import Title from 'components/editor/Title';
 import { store, useStore } from 'lib/store';
@@ -17,9 +18,10 @@ const SYNC_DEBOUNCE_MS = 2500;
 
 type NoteUpdate = {
   id: string;
-  title?: string;
-  content?: string;
-  updated_at?: string;
+  title: string;
+  content: string;
+  created_at: string;
+  updated_at: string;
 };
 
 type Props = {
@@ -64,8 +66,10 @@ function Note(props: Props) {
   }, []);
 
   const handleNoteUpdate = useCallback(async (note, noteUpdate: NoteUpdate) => {
-    const updatedAt = new Date().toISOString();
-    noteUpdate.updated_at = updatedAt;
+    if (!noteUpdate.title || noteUpdate.title === 'Untitled') {
+      toast.error('Please give your note a title.');
+      return;
+    }
 
     const { success, error } = await deck.updateNote(noteUpdate);
 
@@ -74,7 +78,6 @@ function Note(props: Props) {
       return;
     }
 
-    store.getState().updateNote({ id: note.id, updated_at: updatedAt });
     if (note.title) {
       const promisePayloads = await updateBacklinks(note.title, note.id);
       const promises = [];
@@ -92,15 +95,15 @@ function Note(props: Props) {
     const note = store.getState().notes[noteId];
     if (!note) return;
 
-    const noteUpdate: NoteUpdate = { id: noteId };
-    if (!syncState.isContentSynced) {
-      noteUpdate.content = JSON.stringify(note.content);
-    }
-    if (!syncState.isTitleSynced) {
-      noteUpdate.title = note.title;
-    }
+    const noteUpdate: NoteUpdate = {
+      id: noteId,
+      title: note.title,
+      content: JSON.stringify(note.content),
+      created_at: note.created_at,
+      updated_at: new Date().toISOString(),
+    };
 
-    if (noteUpdate.title || noteUpdate.content) {
+    if (!syncState.isContentSynced || !syncState.isTitleSynced) {
       const handler = setTimeout(() => handleNoteUpdate(note, noteUpdate), SYNC_DEBOUNCE_MS);
       return () => clearTimeout(handler);
     }
