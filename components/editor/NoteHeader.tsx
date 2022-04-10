@@ -16,7 +16,6 @@ import { getProfileInfo } from 'utils/getProfileInfo';
 import { usePopper } from 'react-popper';
 import { saveAs } from 'file-saver';
 import JSZip from 'jszip';
-import useSWR from 'swr';
 import { useRouter } from 'next/router';
 import { toast } from 'react-toastify';
 import Portal from 'components/Portal';
@@ -24,10 +23,10 @@ import { useCurrentNote } from 'utils/useCurrentNote';
 import { store, useStore } from 'lib/store';
 import serialize from 'editor/serialization/serialize';
 import { Note } from 'types/supabase';
+import type { ModelTypes } from 'types/ceramic';
 import useImport from 'utils/useImport';
 import { queryParamToArray } from 'utils/url';
 import { useCurrentDeck } from 'utils/useCurrentDeck';
-import selectDecks from 'lib/api/selectDecks';
 import Tooltip from 'components/Tooltip';
 import OpenSidebarButton from 'components/sidebar/OpenSidebarButton';
 import { DropdownItem } from 'components/Dropdown';
@@ -42,28 +41,32 @@ export default function NoteHeader() {
   const currentNote = useCurrentNote();
   const onImport = useImport();
   const { onDeleteClick } = useDeleteNote();
-  // const { user } = useAuth();
-  // const { deck } = useCurrentDeck();
-  // const { data: decks } = useSWR(user ? 'decks' : null, () => selectDecks(user?.id), { revalidateOnFocus: false });
-  // const [deckOptions, setDeckOptions] = useState<any>(null);
-  // const [selectedDeck, setSelectedDeck] = useState<any>(null);
+  const { deck } = useCurrentDeck();
+  const [deckOptions, setDeckOptions] = useState<any>(null);
+  const [selectedDeck, setSelectedDeck] = useState<any>(null);
   const viewerID = useViewerID();
   const profileRecord = useViewerRecord('basicProfile');
+  const decksRecord = useViewerRecord<ModelTypes, 'decks'>('decks');
 
   const router = useRouter();
   const {
     query: { deckId, stack: stackQuery },
   } = router;
 
-  // useEffect(() => {
-  //   const decksToOptions = decks?.map(deck => ({
-  //     label: `${deck.deck_name} (${deck.id})`,
-  //     id: deck.id,
-  //     value: deck.id,
-  //   }));
-  //   setDeckOptions(decksToOptions);
-  //   setSelectedDeck(decksToOptions?.filter(deckOption => deckOption.id === deck?.id)[0]);
-  // }, [decks, deck?.id]);
+  useEffect(() => {
+    if (!decksRecord || !decksRecord.isLoadable) return;
+
+    if (!decksRecord.isLoading) {
+      const decks = decksRecord.content?.decks.map(deck => ({ ...deck, id: deck.id.replace('ceramic://', '') })) ?? [];
+      const decksToOptions = decks?.map(deck => ({
+        label: `${deck.deck_name} (${deck.id})`,
+        id: deck.id,
+        value: deck.id,
+      }));
+      setDeckOptions(decksToOptions);
+      setSelectedDeck(decksToOptions?.filter(deckOption => deckOption.id === deck?.id)[0]);
+    }
+  }, [decksRecord.isLoading, deck, deck?.id]);
 
   const isSidebarButtonVisible = useStore(state => !state.isSidebarOpen && state.openNoteIds?.[0] === currentNote.id);
   const isCloseButtonVisible = useStore(state => state.openNoteIds.length > 1);
@@ -158,7 +161,7 @@ export default function NoteHeader() {
         <div className="inline-flex justify-center">
           {!isCloseButtonVisible && viewerID && (
             <div className="flex items-center">
-              {/* <div className="mr-3">
+              <div className="mr-3">
                 <Select
                   className="react-select-container-header"
                   classNamePrefix="react-select-header"
@@ -170,7 +173,7 @@ export default function NoteHeader() {
                   }}
                 />
               </div>
-              <NoteHeaderDivider /> */}
+              <NoteHeaderDivider />
               <div className="px-2 pt-1 pb-1 text-sm text-gray-600 overflow-ellipsis dark:text-gray-400">
                 {getProfileInfo(viewerID.id, profileRecord.content).displayName}
               </div>

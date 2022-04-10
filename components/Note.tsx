@@ -5,19 +5,22 @@ import { useRouter } from 'next/router';
 import Editor from 'components/editor/Editor';
 import Title from 'components/editor/Title';
 import { store, useStore } from 'lib/store';
-import type { NoteUpdate } from 'lib/api/updateNote';
 import { ProvideCurrentNote } from 'utils/useCurrentNote';
 import { caseInsensitiveStringEqual } from 'utils/string';
-import { useNote, useDeck } from 'utils/ceramic-hooks';
+import { useDeck } from 'utils/ceramic-hooks';
 import updateBacklinks from 'editor/backlinks/updateBacklinks';
 import Backlinks from './editor/backlinks/Backlinks';
 import NoteHeader from './editor/NoteHeader';
 import ErrorBoundary from './ErrorBoundary';
 
-const SYNC_DEBOUNCE_MS = 5000;
+const SYNC_DEBOUNCE_MS = 2500;
 
-const CHECK_VIOLATION_ERROR_CODE = '23514';
-const UNIQUE_VIOLATION_ERROR_CODE = '23505';
+type NoteUpdate = {
+  id: string;
+  title?: string;
+  content?: string;
+  updated_at?: string;
+};
 
 type Props = {
   noteId: string;
@@ -60,40 +63,17 @@ function Note(props: Props) {
     setSyncState(syncState => ({ ...syncState, isContentSynced: false }));
   }, []);
 
-  // const handleNoteUpdate = useCallback(async (noteUpdate: NoteUpdate = { id: noteId }) => {
-  const handleNoteUpdate = useCallback(async () => {
-    const note = store.getState().notes[noteId];
-    if (!note) return;
-
+  const handleNoteUpdate = useCallback(async (note, noteUpdate: NoteUpdate) => {
     const updatedAt = new Date().toISOString();
-    const noteUpdate = {
-      ...note,
-      content: JSON.stringify(note.content),
-      updated_at: updatedAt,
-    };
+    noteUpdate.updated_at = updatedAt;
 
-    const success = await deck.updateNote(noteUpdate);
+    const { success, error } = await deck.updateNote(noteUpdate);
+
     if (!success) {
-      toast.error('Something went wrong saving your note. Please try again later.');
+      toast.error(error ?? 'Something went wrong saving your note. Please try again later.');
       return;
     }
-    // TODO: UI does not reflect updated state immediately
-    // TODO: handle below requirements
-    // TODO: automatic saving?
 
-    // if (error) {
-    //   switch (error.code) {
-    //     case CHECK_VIOLATION_ERROR_CODE:
-    //       toast.error(`This note cannot have an empty title. Please use a different title.`);
-    //       return;
-    //     case UNIQUE_VIOLATION_ERROR_CODE:
-    //       toast.error(`There's already a note called ${note.title}. Please use a different title.`);
-    //       return;
-    //     default:
-    //       toast.error('Something went wrong saving your note. Please try again later.');
-    //       return;
-    //   }
-    // }
     store.getState().updateNote({ id: note.id, updated_at: updatedAt });
     if (note.title) {
       const promisePayloads = await updateBacklinks(note.title, note.id);
@@ -104,54 +84,52 @@ function Note(props: Props) {
 
       await Promise.all(promises);
     }
-    // setSyncState({ isTitleSynced: true, isContentSynced: true });
+    setSyncState({ isTitleSynced: true, isContentSynced: true });
   }, []);
 
-  // Save the note in the database if it changes and it hasn't been saved yet
-  // useEffect(() => {
-  //   const note = store.getState().notes[noteId];
-  //   if (!note) {
-  //     return;
-  //   }
+  // Save the note if it changes and it hasn't been saved yet
+  useEffect(() => {
+    const note = store.getState().notes[noteId];
+    if (!note) return;
 
-  //   const noteUpdate: NoteUpdate = { id: noteId };
-  //   if (!syncState.isContentSynced) {
-  //     noteUpdate.content = note.content;
-  //   }
-  //   if (!syncState.isTitleSynced) {
-  //     noteUpdate.title = note.title;
-  //   }
+    const noteUpdate: NoteUpdate = { id: noteId };
+    if (!syncState.isContentSynced) {
+      noteUpdate.content = JSON.stringify(note.content);
+    }
+    if (!syncState.isTitleSynced) {
+      noteUpdate.title = note.title;
+    }
 
-  //   if (noteUpdate.title || noteUpdate.content) {
-  //     const handler = setTimeout(() => handleNoteUpdate(noteUpdate), SYNC_DEBOUNCE_MS);
-  //     return () => clearTimeout(handler);
-  //   }
-  // }, [noteId, syncState, handleNoteUpdate]);
+    if (noteUpdate.title || noteUpdate.content) {
+      const handler = setTimeout(() => handleNoteUpdate(note, noteUpdate), SYNC_DEBOUNCE_MS);
+      return () => clearTimeout(handler);
+    }
+  }, [noteId, syncState, handleNoteUpdate]);
 
   // Prompt the user with a dialog box about unsaved changes if they navigate away
-  // useEffect(() => {
-  //   const warningText = 'You have unsaved changes — are you sure you wish to leave this page?';
+  useEffect(() => {
+    const warningText = 'You have unsaved changes — are you sure you wish to leave this page?';
 
-  //   const handleWindowClose = (e: BeforeUnloadEvent) => {
-  //     if (isSynced) return;
-  //     e.preventDefault();
-  //     return (e.returnValue = warningText);
-  //   };
-  //   const handleBrowseAway = () => {
-  //     if (isSynced) return;
-  //     if (window.confirm(warningText)) return;
-  //     router.events.emit('routeChangeError');
-  //     throw 'routeChange aborted';
-  //   };
+    const handleWindowClose = (e: BeforeUnloadEvent) => {
+      if (isSynced) return;
+      e.preventDefault();
+      return (e.returnValue = warningText);
+    };
+    const handleBrowseAway = () => {
+      if (isSynced) return;
+      if (window.confirm(warningText)) return;
+      router.events.emit('routeChangeError');
+      throw 'routeChange aborted';
+    };
 
-  //   window.addEventListener('beforeunload', handleWindowClose);
-  //   router.events.on('routeChangeStart', handleBrowseAway);
+    window.addEventListener('beforeunload', handleWindowClose);
+    router.events.on('routeChangeStart', handleBrowseAway);
 
-  //   return () => {
-  //     window.removeEventListener('beforeunload', handleWindowClose);
-  //     router.events.off('routeChangeStart', handleBrowseAway);
-  //   };
-  // }, [router, isSynced]);
+    return () => {
+      window.removeEventListener('beforeunload', handleWindowClose);
+      router.events.off('routeChangeStart', handleBrowseAway);
+    };
+  }, [router, isSynced]);
 
   const noteContainerClassName = 'flex flex-col flex-shrink-0 md:flex-shrink w-full bg-white dark:bg-gray-900 dark:text-gray-100';
   const errorContainerClassName = `${noteContainerClassName} items-center justify-center h-full p-4`;
@@ -187,9 +165,6 @@ function Note(props: Props) {
                 onChange={onEditorValueChange}
                 highlightedPath={highlightedPath}
               />
-              <button className="border" onClick={() => handleNoteUpdate()}>
-                Save
-              </button>
               <Backlinks className="mx-4 mb-8 md:mx-8 md:mb-12" />
             </div>
           </div>

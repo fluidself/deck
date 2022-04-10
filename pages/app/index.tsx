@@ -4,21 +4,20 @@ import { withIronSessionSsr } from 'iron-session/next';
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/router';
 // import { useAccount } from 'wagmi';
-import useSWR from 'swr';
+// import useSWR from 'swr';
 import { useConnection, useViewerRecord, usePublicRecord, useCore } from '@self.id/framework';
-import type { RequestState } from '@self.id/framework';
 import { toast } from 'react-toastify';
 import { v4 as uuidv4 } from 'uuid';
 import { ironOptions } from 'constants/iron-session';
-import supabase from 'lib/supabase';
-import insertDeck from 'lib/api/insertDeck';
-import selectDecks from 'lib/api/selectDecks';
+// import supabase from 'lib/supabase';
+// import insertDeck from 'lib/api/insertDeck';
+// import selectDecks from 'lib/api/selectDecks';
 // import { Deck } from 'types/supabase';
 import useIsMounted from 'utils/useIsMounted';
 import { useAuth } from 'utils/useAuth';
 import { AuthSig } from 'types/lit';
 import type { ModelTypes, DeckItem } from 'types/ceramic';
-import getRequestState, { createRequestClient } from 'utils/getRequestState';
+import { createRequestClient } from 'utils/getRequestState';
 import HomeHeader from 'components/home/HomeHeader';
 import RequestDeckAccess from 'components/home/RequestDeckAccess';
 import ProvideDeckName from 'components/home/ProvideDeckName';
@@ -35,7 +34,7 @@ export default function AppHome() {
   const [connection, connect] = useConnection();
   const { dataModel } = useCore<ModelTypes>();
   // const isMounted = useIsMounted();
-  console.log('decksRecord', decksRecord);
+  // console.log('decksRecord', decksRecord);
 
   // useEffect(() => {
   //   const initLit = async () => {
@@ -146,7 +145,6 @@ export default function AppHome() {
   return (
     <div id="app-container" className="h-screen font-display text-base">
       <div className="flex flex-col w-full h-full bg-gray-900 text-gray-100">
-        {/* TODO: check for connection? */}
         <div className="flex flex-col items-end text-white min-h-[27px] pr-8 mt-2">{<HomeHeader />}</div>
         <div className="flex flex-col flex-1 overflow-y-hidden container">
           <div className="flex flex-col items-center flex-1 w-full p-12">
@@ -186,18 +184,22 @@ export default function AppHome() {
 export const getServerSideProps = withIronSessionSsr(async function ({ req }) {
   const cookie = req.headers.cookie;
   const requestClient = createRequestClient(cookie);
-  let decks: DeckItem[] | undefined = undefined;
+  const prefetch = [];
 
   if (requestClient.viewerID != null) {
     const response = await requestClient.dataStore.get('decks', requestClient.viewerID);
-    decks = response?.decks;
+    const decks = response?.decks ?? [];
 
-    if (decks) {
+    if (decks.length) {
       const newestDeck = decks[decks.length - 1];
       return { redirect: { destination: `/app/${newestDeck.id.replace('ceramic://', '')}`, permanent: false } };
     }
 
-    return { props: { state: await getRequestState(cookie) } };
+    // prefetch.push(requestClient.prefetch('basicProfile', requestClient.viewerID));
+    prefetch.push(requestClient.prefetch('decks', requestClient.viewerID));
+    await Promise.all([prefetch]);
+
+    return { props: { state: requestClient.getState() } };
   }
 
   return { redirect: { destination: '/', permanent: false } };

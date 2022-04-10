@@ -16,7 +16,7 @@ export default async function getRequestState(cookie: string | undefined): Promi
   const prefetch = [];
 
   if (requestClient.viewerID != null) {
-    // prefetch.push(requestClient.prefetch('basicProfile', requestClient.viewerID));
+    prefetch.push(requestClient.prefetch('basicProfile', requestClient.viewerID));
     prefetch.push(requestClient.prefetch('decks', requestClient.viewerID));
   }
 
