@@ -2,17 +2,14 @@
 import LitJsSdk from 'lit-js-sdk';
 import { useMemo, useState } from 'react';
 import { IconFolderPlus, IconGitPullRequest, IconPencil } from '@tabler/icons';
+import { useConnection, useViewerRecord, useCore } from '@self.id/framework';
 import { toast } from 'react-toastify';
-import useSWR from 'swr';
-import supabase from 'lib/supabase';
-import insertDeck from 'lib/api/insertDeck';
-import selectDecks from 'lib/api/selectDecks';
-import { Deck } from 'types/supabase';
-import { useAuth } from 'utils/useAuth';
+import type { ModelTypes } from 'types/ceramic';
 import { AuthSig } from 'types/lit';
 import useHotkeys from 'utils/useHotkeys';
 import Button from 'components/home/Button';
 import { useCurrentDeck } from 'utils/useCurrentDeck';
+import createOnboardingNotes from 'utils/createOnboardingNotes';
 
 type Props = {
   type: 'create' | 'join' | 'rename';
@@ -22,9 +19,10 @@ type Props = {
 export default function CreateJoinRenameDeckModal(props: Props) {
   const { type, closeModal } = props;
 
-  const { user } = useAuth();
   const { deck } = useCurrentDeck();
-  const { data: decks } = useSWR(user ? 'decks' : null, () => selectDecks(user?.id), { revalidateOnFocus: false });
+  const [connection, connect] = useConnection();
+  const decksRecord = useViewerRecord<ModelTypes, 'decks'>('decks');
+  const { dataModel } = useCore<ModelTypes>();
   const [inputText, setInputText] = useState<string>('');
   const [processing, setProcessing] = useState<boolean>(false);
 
@@ -40,89 +38,115 @@ export default function CreateJoinRenameDeckModal(props: Props) {
   useHotkeys(hotkeys);
 
   const createNewDeck = async () => {
-    if (!user || !inputText) return;
+    if (!decksRecord || !decksRecord.isLoadable || !inputText) return;
+    setProcessing(true);
 
-    const deck = await insertDeck({ user_id: user.id, deck_name: inputText });
-
-    if (!deck) {
-      toast.error('There was an error creating the DECK');
-      return;
-    }
-
-    toast.success(`Successfully created ${deck.deck_name}`);
-    setProcessing(false);
-    closeModal();
-    window.location.assign(`${process.env.BASE_URL}/app/${deck.id}`);
-  };
-
-  const renameDeck = async () => {
-    if (!user || !deck || !inputText) return;
-
-    const { data, error } = await supabase.from<Deck>('decks').update({ deck_name: inputText }).eq('id', deck.id).single();
-
-    if (error || !data) {
-      toast.error('There was an error updating the DECK');
-      return;
-    }
-
-    toast.success(`Successfully renamed ${data.deck_name}`);
-    setProcessing(false);
-    closeModal();
-    window.location.assign(`${process.env.BASE_URL}/app/${deck.id}`);
-  };
-
-  const verifyAccess = async () => {
-    if (!inputText) return;
-
-    if (decks?.find(deck => deck.id === inputText)) {
-      toast.success('You own that DECK!');
-      setProcessing(false);
-      closeModal();
-      window.location.assign(`${process.env.BASE_URL}/app/${inputText}`);
-      return;
-    }
-
-    const { data: accessParams } = await supabase.from<Deck>('decks').select('access_params').eq('id', inputText).single();
-    if (!accessParams?.access_params) {
-      toast.error('Unable to verify access.');
-      return;
-    }
-
-    const { resource_id: resourceId, access_control_conditions: accessControlConditions } = accessParams?.access_params || {};
-    if (!resourceId || !accessControlConditions || !accessControlConditions[0].chain) {
-      toast.error('Unable to verify access.');
-      return;
+    if (connection.status !== 'connected') {
+      await connect();
     }
 
     try {
-      const chain = accessControlConditions[0].chain;
-      const authSig: AuthSig = await LitJsSdk.checkAndSignAuthMessage({ chain });
-      const jwt = await window.litNodeClient.getSignedToken({
-        accessControlConditions,
-        chain,
-        authSig,
-        resourceId,
+      const onboardingNotes = createOnboardingNotes();
+      const doc = await dataModel.createTile('Deck', {
+        notes: onboardingNotes,
+        note_tree: '',
+        access_params: '',
       });
 
-      const response = await fetch('/api/verify-jwt', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ jwt, requestedDeck: inputText }),
-      });
+      if (!doc) {
+        toast.error(`There was an error creating the DECK.`);
+        return;
+      }
 
-      if (!response.ok) return;
+      const decks = decksRecord.content?.decks ?? [];
+      await decksRecord.set({ decks: [...decks, { id: doc.id.toUrl(), deck_name: inputText }] });
 
-      toast.success('Access to DECK is granted.');
+      toast.success(`Successfully created ${inputText}`);
       setProcessing(false);
       closeModal();
-      window.location.assign(`${process.env.BASE_URL}/app/${inputText}`);
-    } catch (e: any) {
-      console.error(e);
-      toast.error('Unable to verify access.');
+      window.location.assign(`${process.env.BASE_URL}/app/${doc.id.toString()}`);
+    } catch (error) {
+      console.error(error);
     }
   };
+
+  const renameDeck = async () => {
+    if (!decksRecord || !decksRecord.isLoadable || !inputText) return;
+    setProcessing(true);
+
+    if (connection.status !== 'connected') {
+      await connect();
+    }
+
+    try {
+      const decks = decksRecord.content?.decks ?? [];
+      const otherDecks = decks.filter(d => d.id !== `ceramic://${deck.id}`);
+      await decksRecord.set({ decks: [...otherDecks, { id: `ceramic://${deck.id}`, deck_name: inputText }] });
+
+      toast.success(`Successfully renamed ${inputText}`);
+      setProcessing(false);
+      closeModal();
+      window.location.assign(`${process.env.BASE_URL}/app/${deck.id}`);
+    } catch (error) {
+      console.error(error);
+      toast.error('There was an error updating the DECK');
+      return;
+    }
+  };
+
+  // const verifyAccess = async () => {
+  //   if (!inputText) return;
+  //   setProcessing(true);
+
+  //   if (decks?.find(deck => deck.id === inputText)) {
+  //     toast.success('You own that DECK!');
+  //     setProcessing(false);
+  //     closeModal();
+  //     window.location.assign(`${process.env.BASE_URL}/app/${inputText}`);
+  //     return;
+  //   }
+
+  //   const { data: accessParams } = await supabase.from<Deck>('decks').select('access_params').eq('id', inputText).single();
+  //   if (!accessParams?.access_params) {
+  //     toast.error('Unable to verify access.');
+  //     return;
+  //   }
+
+  //   const { resource_id: resourceId, access_control_conditions: accessControlConditions } = accessParams?.access_params || {};
+  //   if (!resourceId || !accessControlConditions || !accessControlConditions[0].chain) {
+  //     toast.error('Unable to verify access.');
+  //     return;
+  //   }
+
+  //   try {
+  //     const chain = accessControlConditions[0].chain;
+  //     const authSig: AuthSig = await LitJsSdk.checkAndSignAuthMessage({ chain });
+  //     const jwt = await window.litNodeClient.getSignedToken({
+  //       accessControlConditions,
+  //       chain,
+  //       authSig,
+  //       resourceId,
+  //     });
+
+  //     const response = await fetch('/api/verify-jwt', {
+  //       method: 'POST',
+  //       headers: {
+  //         'Content-Type': 'application/json',
+  //       },
+  //       body: JSON.stringify({ jwt, requestedDeck: inputText }),
+  //     });
+
+  //     if (!response.ok) return;
+
+  //     toast.success('Access to DECK is granted.');
+  //     setProcessing(false);
+  //     closeModal();
+  //     window.location.assign(`${process.env.BASE_URL}/app/${inputText}`);
+  //   } catch (e: any) {
+  //     console.error(e);
+  //     toast.error('Unable to verify access.');
+  //   }
+  // };
 
   const headings = { create: 'Create a new DECK', join: 'Join a DECK', rename: 'Rename this DECK' };
   const icons = {
@@ -131,7 +155,8 @@ export default function CreateJoinRenameDeckModal(props: Props) {
     rename: <IconPencil className="ml-4 mr-1 text-gray-200" size={32} />,
   };
   const placeholders = { create: 'Enter DECK name', join: 'Enter DECK ID', rename: 'Enter new DECK name' };
-  const onClickHandlers = { create: createNewDeck, join: verifyAccess, rename: renameDeck };
+  // const onClickHandlers = { create: createNewDeck, join: verifyAccess, rename: renameDeck };
+  const onClickHandlers = { create: createNewDeck, join: () => {}, rename: renameDeck };
 
   return (
     <div className="fixed inset-0 z-20 overflow-y-auto">

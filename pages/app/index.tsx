@@ -5,9 +5,8 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/router';
 // import { useAccount } from 'wagmi';
 // import useSWR from 'swr';
-import { useConnection, useViewerRecord, usePublicRecord, useCore } from '@self.id/framework';
+import { useConnection, useViewerRecord, useCore } from '@self.id/framework';
 import { toast } from 'react-toastify';
-import { v4 as uuidv4 } from 'uuid';
 import { ironOptions } from 'constants/iron-session';
 // import supabase from 'lib/supabase';
 // import insertDeck from 'lib/api/insertDeck';
@@ -18,6 +17,7 @@ import { useAuth } from 'utils/useAuth';
 import { AuthSig } from 'types/lit';
 import type { ModelTypes, DeckItem } from 'types/ceramic';
 import { createRequestClient } from 'utils/getRequestState';
+import createOnboardingNotes from 'utils/createOnboardingNotes';
 import HomeHeader from 'components/home/HomeHeader';
 import RequestDeckAccess from 'components/home/RequestDeckAccess';
 import ProvideDeckName from 'components/home/ProvideDeckName';
@@ -64,21 +64,15 @@ export default function AppHome() {
     }
 
     try {
+      const onboardingNotes = createOnboardingNotes();
       const doc = await dataModel.createTile('Deck', {
+        notes: onboardingNotes,
         note_tree: '',
-        notes: [
-          {
-            id: uuidv4(),
-            title: 'Getting Started',
-            content: JSON.stringify([{ id: uuidv4(), type: 'paragraph', children: [{ text: '' }] }]),
-            created_at: new Date().toISOString(),
-            updated_at: new Date().toISOString(),
-          },
-        ],
+        access_params: '',
       });
 
       if (!doc) {
-        toast.error(`There was an error creating the deck ${deckName}.`);
+        toast.error(`There was an error creating the DECK ${deckName}.`);
         return;
       }
 
