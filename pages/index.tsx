@@ -20,7 +20,7 @@ export default function Home() {
     if (connection.status === 'connected') {
       router.push('/app');
     }
-  }, [connection]);
+  }, [connection, router]);
 
   // useEffect(() => {
   //   const onDisconnect = () => signOut();

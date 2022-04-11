@@ -12,7 +12,6 @@ import {
   IconSend,
 } from '@tabler/icons';
 import { AvatarPlaceholder, useViewerID, useViewerRecord } from '@self.id/framework';
-import { getProfileInfo } from 'utils/getProfileInfo';
 import { usePopper } from 'react-popper';
 import { saveAs } from 'file-saver';
 import JSZip from 'jszip';
@@ -20,6 +19,7 @@ import { useRouter } from 'next/router';
 import { toast } from 'react-toastify';
 import Portal from 'components/Portal';
 import { useCurrentNote } from 'utils/useCurrentNote';
+import { getProfileInfo } from 'utils/getProfileInfo';
 import { store, useStore } from 'lib/store';
 import serialize from 'editor/serialization/serialize';
 import { Note } from 'types/supabase';
@@ -66,7 +66,7 @@ export default function NoteHeader() {
       setDeckOptions(decksToOptions);
       setSelectedDeck(decksToOptions?.filter(deckOption => deckOption.id === deck?.id)[0]);
     }
-  }, [decksRecord.isLoading, deck, deck?.id]);
+  }, [decksRecord, deck, deck?.id]);
 
   const isSidebarButtonVisible = useStore(state => !state.isSidebarOpen && state.openNoteIds?.[0] === currentNote.id);
   const isCloseButtonVisible = useStore(state => state.openNoteIds.length > 1);

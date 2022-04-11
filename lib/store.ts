@@ -7,7 +7,6 @@ import type { Note } from 'types/supabase';
 import { caseInsensitiveStringEqual } from 'utils/string';
 import { Backlink } from 'editor/backlinks/useBacklinks';
 import createUserSettingsSlice, { UserSettings } from './createUserSettingsSlice';
-import type { ModelTypes, NoteItem } from 'types/ceramic';
 import type { NoteUpdate } from './api/updateNote';
 
 export { default as shallowEqual } from 'zustand/shallow';

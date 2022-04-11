@@ -95,7 +95,7 @@ function MoveToInput(props: Props, ref: ForwardedRef<HTMLInputElement>) {
 
       await deck.updateNoteTree();
     },
-    [deckId, onOptionClickCallback, noteId, moveNoteTreeItem],
+    [deck, deckId, onOptionClickCallback, noteId, moveNoteTreeItem],
   );
 
   const onKeyDown = useCallback(

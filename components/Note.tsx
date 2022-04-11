@@ -65,30 +65,33 @@ function Note(props: Props) {
     setSyncState(syncState => ({ ...syncState, isContentSynced: false }));
   }, []);
 
-  const handleNoteUpdate = useCallback(async (note, noteUpdate: NoteUpdate) => {
-    if (!noteUpdate.title || noteUpdate.title === 'Untitled') {
-      toast.error('Please give your note a title.');
-      return;
-    }
-
-    const { success, error } = await deck.updateNote(noteUpdate);
-
-    if (!success) {
-      toast.error(error ?? 'Something went wrong saving your note. Please try again later.');
-      return;
-    }
-
-    if (note.title) {
-      const promisePayloads = await updateBacklinks(note.title, note.id);
-      const promises = [];
-      for (const payload of promisePayloads) {
-        promises.push(deck.updateNote(payload));
+  const handleNoteUpdate = useCallback(
+    async (note, noteUpdate: NoteUpdate) => {
+      if (!noteUpdate.title || noteUpdate.title === 'Untitled') {
+        toast.error('Please give your note a title.');
+        return;
       }
 
-      await Promise.all(promises);
-    }
-    setSyncState({ isTitleSynced: true, isContentSynced: true });
-  }, []);
+      const { success, error } = await deck.updateNote(noteUpdate);
+
+      if (!success) {
+        toast.error(error ?? 'Something went wrong saving your note. Please try again later.');
+        return;
+      }
+
+      if (note.title) {
+        const promisePayloads = await updateBacklinks(note.title, note.id);
+        const promises = [];
+        for (const payload of promisePayloads) {
+          promises.push(deck.updateNote(payload));
+        }
+
+        await Promise.all(promises);
+      }
+      setSyncState({ isTitleSynced: true, isContentSynced: true });
+    },
+    [deck],
+  );
 
   // Save the note if it changes and it hasn't been saved yet
   useEffect(() => {

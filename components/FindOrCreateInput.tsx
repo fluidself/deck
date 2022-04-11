@@ -96,7 +96,7 @@ function FindOrCreateInput(props: Props, ref: ForwardedRef<HTMLInputElement>) {
         throw new Error(`Option type ${option.type} is not supported`);
       }
     },
-    [router, inputText, onOptionClickCallback],
+    [deck, deckId, router, inputText, onOptionClickCallback],
   );
 
   const onKeyDown = useCallback(
