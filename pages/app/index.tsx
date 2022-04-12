@@ -18,6 +18,7 @@ import { AuthSig } from 'types/lit';
 import type { ModelTypes, DeckItem } from 'types/ceramic';
 import { createRequestClient } from 'utils/getRequestState';
 import createOnboardingNotes from 'utils/createOnboardingNotes';
+import { encryptWithLit } from 'utils/encryption';
 import HomeHeader from 'components/home/HomeHeader';
 import RequestDeckAccess from 'components/home/RequestDeckAccess';
 import ProvideDeckName from 'components/home/ProvideDeckName';
@@ -31,22 +32,24 @@ export default function AppHome() {
   const [requestingAccess, setRequestingAccess] = useState<boolean>(false);
   const [creatingDeck, setCreatingDeck] = useState<boolean>(false);
   const decksRecord = useViewerRecord<ModelTypes, 'decks'>('decks');
+  const accountsRecord = useViewerRecord<ModelTypes, 'cryptoAccounts'>('cryptoAccounts');
   const [connection, connect] = useConnection();
   const { dataModel } = useCore<ModelTypes>();
-  // const isMounted = useIsMounted();
+  const isMounted = useIsMounted();
   // console.log('decksRecord', decksRecord);
+  // console.log('accountsRecord', accountsRecord.content);
 
-  // useEffect(() => {
-  //   const initLit = async () => {
-  //     const client = new LitJsSdk.LitNodeClient({ alertWhenUnauthorized: false, debug: false });
-  //     await client.connect();
-  //     window.litNodeClient = client;
-  //   };
+  useEffect(() => {
+    const initLit = async () => {
+      const client = new LitJsSdk.LitNodeClient({ alertWhenUnauthorized: false, debug: false });
+      await client.connect();
+      window.litNodeClient = client;
+    };
 
-  //   if (!window.litNodeClient && isMounted() && user) {
-  //     initLit();
-  //   }
-  // }, [isMounted, user]);
+    if (!window.litNodeClient && isMounted()) {
+      initLit();
+    }
+  }, [isMounted]);
 
   // useEffect(() => {
   //   const onDisconnect = () => signOut();
@@ -58,21 +61,43 @@ export default function AppHome() {
   // }, [accountData?.connector, signOut]);
 
   const createNewDeck = async (deckName: string) => {
-    if (!decksRecord || !decksRecord.isLoadable) return;
+    if (!decksRecord || !decksRecord.isLoadable || !accountsRecord.content || !accountsRecord.isLoadable) return;
     if (connection.status !== 'connected') {
       await connect();
     }
 
     try {
+      // TODO: clean up / make reusable
+      const userEthAddressRecord = Object.keys(accountsRecord.content).find(record => record.includes('@eip155:1'));
+      if (!userEthAddressRecord) return;
+      const userEthAddress = userEthAddressRecord.replace('@eip155:1', '');
+      const accessControlConditions = [
+        {
+          contractAddress: '',
+          standardContractType: '',
+          chain: 'ethereum',
+          method: '',
+          parameters: [':userAddress'],
+          returnValueTest: {
+            comparator: '=',
+            value: userEthAddress,
+          },
+        },
+      ];
       const onboardingNotes = createOnboardingNotes();
-      const doc = await dataModel.createTile('Deck', {
+      const toEncrypt = JSON.stringify({
         notes: onboardingNotes,
-        note_tree: '',
-        access_params: '',
+        note_tree: null,
+      });
+      const [encryptedZipBase64, encryptedSymmetricKeyBase64] = await encryptWithLit(toEncrypt, accessControlConditions);
+      const doc = await dataModel.createTile('Deck', {
+        encryptedZip: encryptedZipBase64,
+        symmetricKey: encryptedSymmetricKeyBase64,
+        accessControlConditions,
       });
 
       if (!doc) {
-        toast.error(`There was an error creating the DECK ${deckName}.`);
+        toast.error(`There was an error creating the DECK.`);
         return;
       }
 
@@ -81,6 +106,7 @@ export default function AppHome() {
 
       router.push(`/app/${doc.id.toString()}`);
     } catch (error) {
+      toast.error(`There was an error creating the DECK.`);
       console.error(error);
     }
   };
@@ -190,6 +216,7 @@ export const getServerSideProps = withIronSessionSsr(async function ({ req }) {
     }
 
     // prefetch.push(requestClient.prefetch('basicProfile', requestClient.viewerID));
+    prefetch.push(requestClient.prefetch('cryptoAccounts', requestClient.viewerID));
     prefetch.push(requestClient.prefetch('decks', requestClient.viewerID));
     await Promise.all([prefetch]);
 

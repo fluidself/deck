@@ -8,6 +8,7 @@ import Title from 'components/editor/Title';
 import { store, useStore } from 'lib/store';
 import { ProvideCurrentNote } from 'utils/useCurrentNote';
 import { caseInsensitiveStringEqual } from 'utils/string';
+import type { NoteItem } from 'types/ceramic';
 import { useDeck } from 'utils/ceramic-hooks';
 import updateBacklinks from 'editor/backlinks/updateBacklinks';
 import Backlinks from './editor/backlinks/Backlinks';
@@ -16,13 +17,13 @@ import ErrorBoundary from './ErrorBoundary';
 
 const SYNC_DEBOUNCE_MS = 2500;
 
-type NoteUpdate = {
-  id: string;
-  title: string;
-  content: string;
-  created_at: string;
-  updated_at: string;
-};
+// type NoteUpdate = {
+//   id: string;
+//   title: string;
+//   content: Array;
+//   created_at: string;
+//   updated_at: string;
+// };
 
 type Props = {
   noteId: string;
@@ -66,7 +67,7 @@ function Note(props: Props) {
   }, []);
 
   const handleNoteUpdate = useCallback(
-    async (note, noteUpdate: NoteUpdate) => {
+    async (note, noteUpdate: NoteItem) => {
       if (!noteUpdate.title || noteUpdate.title === 'Untitled') {
         toast.error('Please give your note a title.');
         return;
@@ -98,18 +99,18 @@ function Note(props: Props) {
     const note = store.getState().notes[noteId];
     if (!note) return;
 
-    const noteUpdate: NoteUpdate = {
+    const noteUpdate: NoteItem = {
       id: noteId,
       title: note.title,
-      content: JSON.stringify(note.content),
+      content: note.content,
       created_at: note.created_at,
       updated_at: new Date().toISOString(),
     };
 
-    if (!syncState.isContentSynced || !syncState.isTitleSynced) {
-      const handler = setTimeout(() => handleNoteUpdate(note, noteUpdate), SYNC_DEBOUNCE_MS);
-      return () => clearTimeout(handler);
-    }
+    // if (!syncState.isContentSynced || !syncState.isTitleSynced) {
+    //   const handler = setTimeout(() => handleNoteUpdate(note, noteUpdate), SYNC_DEBOUNCE_MS);
+    //   return () => clearTimeout(handler);
+    // }
   }, [noteId, syncState, handleNoteUpdate]);
 
   // Prompt the user with a dialog box about unsaved changes if they navigate away

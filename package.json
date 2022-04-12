@@ -68,6 +68,7 @@
   "devDependencies": {
     "@ceramicnetwork/cli": "^1.11.1",
     "@ceramicnetwork/http-client": "^1.5.7",
+    "@datamodels/identity-accounts-crypto": "^0.1.2",
     "@datamodels/identity-profile-basic": "^0.1.2",
     "@glazed/devtools": "^0.1.6",
     "@glazed/types": "^0.1.3",

@@ -4,8 +4,9 @@ import { PublicID, useConnection, useCore, usePublicRecord, useViewerID, useView
 import type { PublicRecord } from '@self.id/framework';
 import { useCallback } from 'react';
 import { useMutation, useQuery, useQueryClient } from 'react-query';
-import { store, useStore } from 'lib/store';
-import type { ModelTypes, Deck, Decks } from 'types/ceramic';
+import { NoteTreeItem, store, useStore } from 'lib/store';
+import type { ModelTypes, Deck, Decks, NoteItem } from 'types/ceramic';
+import { decodeFromB64, encryptWithLit, decryptWithLit } from 'utils/encryption';
 
 export type TileDoc<ContentType> = {
   isLoading: boolean;
@@ -81,38 +82,57 @@ export function useDeck(id: string) {
 
   // TODO: handle errors / loading state?
 
-  const addNote = useCallback(
-    async newNote => {
-      if (connection.status !== 'connected') await connect();
-      if (!deckDoc.content?.notes?.length || !newNote) return false;
+  // const addNote = useCallback(
+  //   async newNote => {
+  //     if (connection.status !== 'connected') await connect();
+  //     if (!deckDoc.content?.notes?.length || !newNote) return false;
 
-      try {
-        await deckDoc.update({ ...deckDoc.content, notes: [...deckDoc.content.notes, newNote] });
+  //     try {
+  //       await deckDoc.update({ ...deckDoc.content, notes: [...deckDoc.content.notes, newNote] });
 
-        upsertNoteStore({ ...newNote, content: JSON.parse(newNote.content) });
-        return true;
-      } catch (error) {
-        console.error(error);
-        return false;
-      }
-    },
-    [deckDoc, connection, connect],
-  );
+  //       upsertNoteStore({ ...newNote, content: JSON.parse(newNote.content) });
+  //       return true;
+  //     } catch (error) {
+  //       console.error(error);
+  //       return false;
+  //     }
+  //   },
+  //   [deckDoc, connection, connect],
+  // );
 
   const updateNote = useCallback(
     async noteUpdate => {
       if (connection.status !== 'connected') await connect();
-      if (!deckDoc.content?.notes?.length || !noteUpdate) return { success: false };
+      if (!deckDoc.content || !noteUpdate) return { success: false };
 
       try {
-        const otherNotes = deckDoc.content.notes.filter(note => note.id !== noteUpdate.id);
+        const { encryptedZip, symmetricKey, accessControlConditions } = deckDoc.content;
+        console.log(accessControlConditions);
+        const { success, decodedZip, decodedSymmetricKey } = await decodeFromB64(encryptedZip, symmetricKey);
+        console.log(success, decodedZip, decodedSymmetricKey);
+        if (!success || !decodedZip || !decodedSymmetricKey) return { success: false };
+
+        const decryptedString = await decryptWithLit(decodedZip, decodedSymmetricKey, accessControlConditions);
+        console.log(decryptedString);
+        const { notes, note_tree }: { notes: NoteItem[]; note_tree: NoteTreeItem[] | null } = JSON.parse(decryptedString);
+        const otherNotes = notes.filter(note => note.id !== noteUpdate.id);
         const duplicateTitle = otherNotes.findIndex(note => note.title === noteUpdate.title) >= 0;
 
         if (duplicateTitle) {
           return { success: false, error: `There's already a note called ${noteUpdate.title}. Please use a different title.` };
         }
 
-        await deckDoc.update({ ...deckDoc.content, notes: [...otherNotes, noteUpdate] });
+        const toEncrypt = JSON.stringify({
+          notes,
+          note_tree,
+        });
+        const [encryptedZipBase64, encryptedSymmetricKeyBase64] = await encryptWithLit(toEncrypt, accessControlConditions);
+
+        await deckDoc.update({
+          encryptedZip: encryptedZipBase64,
+          symmetricKey: encryptedSymmetricKeyBase64,
+          accessControlConditions,
+        });
 
         // Don't update the note if it is currently open
         const openNoteIds = store.getState().openNoteIds;
@@ -129,40 +149,40 @@ export function useDeck(id: string) {
     [deckDoc, connection, connect],
   );
 
-  const deleteNote = useCallback(
-    async noteId => {
-      if (connection.status !== 'connected') await connect();
-      if (!deckDoc.content?.notes?.length || !noteId) return false;
+  // const deleteNote = useCallback(
+  //   async noteId => {
+  //     if (connection.status !== 'connected') await connect();
+  //     if (!deckDoc.content?.notes?.length || !noteId) return false;
 
-      try {
-        const remainingNotes = deckDoc.content.notes.filter(note => note.id !== noteId);
+  //     try {
+  //       const remainingNotes = deckDoc.content.notes.filter(note => note.id !== noteId);
 
-        await deckDoc.update({ ...deckDoc.content, notes: remainingNotes, note_tree: JSON.stringify(store.getState().noteTree) });
+  //       await deckDoc.update({ ...deckDoc.content, notes: remainingNotes, note_tree: JSON.stringify(store.getState().noteTree) });
 
-        deleteNoteStore(noteId);
+  //       deleteNoteStore(noteId);
 
-        return true;
-      } catch (error) {
-        console.error(error);
-        return false;
-      }
-    },
-    [deckDoc, connection, connect],
-  );
+  //       return true;
+  //     } catch (error) {
+  //       console.error(error);
+  //       return false;
+  //     }
+  //   },
+  //   [deckDoc, connection, connect],
+  // );
 
-  const updateNoteTree = useCallback(async () => {
-    if (connection.status !== 'connected') await connect();
-    if (!deckDoc.content?.notes?.length) return false;
+  // const updateNoteTree = useCallback(async () => {
+  //   if (connection.status !== 'connected') await connect();
+  //   if (!deckDoc.content?.notes?.length) return false;
 
-    try {
-      await deckDoc.update({ ...deckDoc.content, note_tree: JSON.stringify(store.getState().noteTree) });
+  //   try {
+  //     await deckDoc.update({ ...deckDoc.content, note_tree: JSON.stringify(store.getState().noteTree) });
 
-      return true;
-    } catch (error) {
-      console.error(error);
-      return false;
-    }
-  }, [deckDoc, connection, connect]);
+  //     return true;
+  //   } catch (error) {
+  //     console.error(error);
+  //     return false;
+  //   }
+  // }, [deckDoc, connection, connect]);
 
   return {
     isEditable,
@@ -172,9 +192,9 @@ export function useDeck(id: string) {
     isMutating: deckDoc.isMutating,
     content,
     error: deckDoc.error,
-    addNote,
+    // addNote,
     updateNote,
-    deleteNote,
-    updateNoteTree,
+    // deleteNote,
+    // updateNoteTree,
   };
 }

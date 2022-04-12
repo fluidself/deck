@@ -1,3 +1,5 @@
+// @ts-ignore
+import LitJsSdk from 'lit-js-sdk';
 import { useConnection } from '@self.id/framework';
 import { withIronSessionSsr } from 'iron-session/next';
 import { IconInfoCircle } from '@tabler/icons';
@@ -6,6 +8,7 @@ import { useRouter } from 'next/router';
 // import { useAccount } from 'wagmi';
 import { ironOptions } from 'constants/iron-session';
 import { createRequestClient } from 'utils/getRequestState';
+import useIsMounted from 'utils/useIsMounted';
 // import { useAuth } from 'utils/useAuth';
 import { EthereumIcon } from 'components/home/EthereumIcon';
 import Button from 'components/home/Button';
@@ -15,12 +18,25 @@ export default function Home() {
   // const { signIn, signOut } = useAuth();
   const [connection, connect] = useConnection();
   const router = useRouter();
+  const isMounted = useIsMounted();
 
   useEffect(() => {
     if (connection.status === 'connected') {
       router.push('/app');
     }
   }, [connection, router]);
+
+  useEffect(() => {
+    const initLit = async () => {
+      const client = new LitJsSdk.LitNodeClient({ alertWhenUnauthorized: false, debug: false });
+      await client.connect();
+      window.litNodeClient = client;
+    };
+
+    if (!window.litNodeClient && isMounted()) {
+      initLit();
+    }
+  }, [isMounted]);
 
   // useEffect(() => {
   //   const onDisconnect = () => signOut();

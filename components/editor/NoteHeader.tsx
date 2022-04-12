@@ -53,20 +53,20 @@ export default function NoteHeader() {
     query: { deckId, stack: stackQuery },
   } = router;
 
-  useEffect(() => {
-    if (!decksRecord || !decksRecord.isLoadable) return;
+  // useEffect(() => {
+  //   if (!decksRecord || !decksRecord.isLoadable) return;
 
-    if (!decksRecord.isLoading) {
-      const decks = decksRecord.content?.decks.map(deck => ({ ...deck, id: deck.id.replace('ceramic://', '') })) ?? [];
-      const decksToOptions = decks?.map(deck => ({
-        label: `${deck.deck_name} (${deck.id})`,
-        id: deck.id,
-        value: deck.id,
-      }));
-      setDeckOptions(decksToOptions);
-      setSelectedDeck(decksToOptions?.filter(deckOption => deckOption.id === deck?.id)[0]);
-    }
-  }, [decksRecord, deck, deck?.id]);
+  //   if (!decksRecord.isLoading) {
+  //     const decks = decksRecord.content?.decks.map(deck => ({ ...deck, id: deck.id.replace('ceramic://', '') })) ?? [];
+  //     const decksToOptions = decks?.map(deck => ({
+  //       label: `${deck.deck_name} (${deck.id})`,
+  //       id: deck.id,
+  //       value: deck.id,
+  //     }));
+  //     setDeckOptions(decksToOptions);
+  //     setSelectedDeck(decksToOptions?.filter(deckOption => deckOption.id === deck?.id)[0]);
+  //   }
+  // }, [decksRecord, deck, deck?.id]);
 
   const isSidebarButtonVisible = useStore(state => !state.isSidebarOpen && state.openNoteIds?.[0] === currentNote.id);
   const isCloseButtonVisible = useStore(state => state.openNoteIds.length > 1);

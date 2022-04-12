@@ -9,7 +9,7 @@ export default function createOnboardingNotes() {
     {
       id: gettingStartedId,
       title: 'Getting Started',
-      content: JSON.stringify([
+      content: [
         {
           type: 'paragraph',
           children: [{ text: 'Here are some basics to help you get started using your DECK.' }],
@@ -127,14 +127,14 @@ export default function createOnboardingNotes() {
             },
           ],
         },
-      ]),
+      ],
       created_at: new Date().toISOString(),
       updated_at: new Date().toISOString(),
     },
     {
       id: linkedNoteId,
       title: 'Linked Note',
-      content: JSON.stringify([
+      content: [
         {
           type: 'paragraph',
           children: [
@@ -159,14 +159,14 @@ export default function createOnboardingNotes() {
             },
           ],
         },
-      ]),
+      ],
       created_at: new Date().toISOString(),
       updated_at: new Date().toISOString(),
     },
     {
       id: stackedNotedId,
       title: 'Page Stacking',
-      content: JSON.stringify([
+      content: [
         {
           type: 'paragraph',
           children: [
@@ -176,7 +176,7 @@ export default function createOnboardingNotes() {
           ],
         },
         { type: 'paragraph', children: [{ text: 'Try creating your own notes and linking them together!' }] },
-      ]),
+      ],
       created_at: new Date().toISOString(),
       updated_at: new Date().toISOString(),
     },

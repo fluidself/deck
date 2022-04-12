@@ -1,24 +1,28 @@
 import type { ModelTypeAliases } from '@glazed/types';
 import type { BasicProfile } from '@datamodels/identity-profile-basic';
-
-// export type EditionState =
-//   | { status: 'pending' }
-//   | { status: 'loading' }
-//   | { status: 'failed'; error?: unknown }
-//   | { status: 'done'; notePage: string };
+import type { CryptoAccountLinks as CryptoAccounts } from '@datamodels/identity-accounts-crypto';
+import type { Descendant } from 'slate';
+import type { AccessControlCondition, BooleanCondition } from './lit';
+import { NoteTreeItem } from 'lib/store';
 
 export type NoteItem = {
   id: string;
   title: string;
-  content: string;
+  content: Descendant[];
   created_at: string;
   updated_at: string;
 };
 
-export type Deck = {
+export type DecryptedDeck = {
   notes: Array<NoteItem>;
-  note_tree: string;
-  access_params: string;
+  note_tree: Array<NoteTreeItem> | null;
+};
+
+export type Deck = {
+  encryptedZip: string;
+  symmetricKey: string;
+  accessControlConditions: Array<AccessControlCondition | BooleanCondition>;
+  // chain: string;
 };
 
 export type DeckItem = {
@@ -33,11 +37,14 @@ export type Decks = {
 export type ModelTypes = ModelTypeAliases<
   {
     BasicProfile: BasicProfile;
+    CryptoAccounts: CryptoAccounts;
     Deck: Deck;
     Decks: Decks;
   },
   {
     basicProfile: 'BasicProfile';
+    cryptoAccounts: 'CryptoAccounts';
+    // deck: 'Deck';
     decks: 'Decks';
   }
 >;

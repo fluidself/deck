@@ -1,7 +1,6 @@
 import { writeFile } from 'node:fs/promises';
 import { CeramicClient } from '@ceramicnetwork/http-client';
 import { model as profileModel } from '@datamodels/identity-profile-basic';
-import { model as accountsModel } from '@datamodels/identity-accounts-crypto';
 import { ModelManager } from '@glazed/devtools';
 import { DID } from 'dids';
 import { Ed25519Provider } from 'key-did-provider-ed25519';
@@ -30,32 +29,61 @@ ceramic.did = did;
 // Create a manager for the model
 const manager = new ModelManager(ceramic);
 
-// Add basicProfile and cryptoAccounts to the model
+// Add basicProfile to the model
 manager.addJSONModel(profileModel);
-manager.addJSONModel(accountsModel);
 
 const deckSchemaID = await manager.createSchema('Deck', {
   $schema: 'http://json-schema.org/draft-07/schema#',
   title: 'Deck',
   type: 'object',
+  // required: ['deck_name'],
   properties: {
-    encryptedZip: {
-      type: 'string',
-      title: 'encryptedZip',
-      contentEncoding: 'base64',
-    },
-    symmetricKey: {
-      type: 'string',
-      title: 'symmetricKey',
-      contentEncoding: 'base64',
-    },
-    accessControlConditions: {
+    notes: {
+      // TODO: JSON.stringify this whole thing for encryption?
       type: 'array',
-      title: 'accessControlConditions',
+      title: 'notes',
       items: {
         type: 'object',
-        title: 'AccessControlConditionItem',
+        title: 'NoteItem',
+        properties: {
+          id: {
+            type: 'string',
+            maxLength: 36,
+          },
+          content: {
+            type: 'string',
+            title: 'content',
+            maxLength: 10000,
+          },
+          title: {
+            type: 'string',
+            title: 'title',
+            maxLength: 60,
+          },
+          created_at: {
+            type: 'string',
+            format: 'date-time',
+            title: 'created_at',
+            maxLength: 30,
+          },
+          updated_at: {
+            type: 'string',
+            format: 'date-time',
+            title: 'updated_at',
+            maxLength: 30,
+          },
+        },
       },
+    },
+    note_tree: {
+      type: 'string',
+      title: 'note_tree',
+      maxLength: 2000,
+    },
+    access_params: {
+      type: 'string',
+      title: 'access_params',
+      maxLength: 500,
     },
   },
 });

@@ -43,7 +43,7 @@ function Sidebar(props: Props) {
   const [isShareModalOpen, setIsShareModalOpen] = useState<boolean>(false);
   const [processingAccess, setProcessingAccess] = useState<boolean>(false);
   const [createJoinRenameModal, setCreateJoinRenameModal] = useState<any>({ open: false, type: '' });
-  const isMounted = useIsMounted();
+  // const isMounted = useIsMounted();
 
   // useEffect(() => {
   //   const initLit = async () => {
@@ -52,10 +52,10 @@ function Sidebar(props: Props) {
   //     window.litNodeClient = client;
   //   };
 
-  //   if (!window.litNodeClient && isMounted() && user) {
+  //   if (!window.litNodeClient && isMounted()) {
   //     initLit();
   //   }
-  // }, [isMounted, user]);
+  // }, [isMounted]);
 
   const provisionAccess = async (accessControlConditions: AccessControlCondition[]) => {
     if (!deck || !accessControlConditions) return;

@@ -1,3 +1,5 @@
+// @ts-ignore
+import LitJsSdk from 'lit-js-sdk';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import type { ReactNode } from 'react';
 import { useRouter } from 'next/router';
@@ -15,6 +17,8 @@ import { useDeck } from 'utils/ceramic-hooks';
 import useHotkeys from 'utils/useHotkeys';
 // import { useAuth } from 'utils/useAuth';
 import { isMobile } from 'utils/device';
+import useIsMounted from 'utils/useIsMounted';
+import { decodeFromB64, decryptWithLit } from 'utils/encryption';
 import Sidebar from './sidebar/Sidebar';
 import FindOrCreateModal from './FindOrCreateModal';
 import PageLoading from './PageLoading';
@@ -33,8 +37,21 @@ export default function AppLayout(props: Props) {
   } = router;
   const viewerID = useViewerID();
   const deck = useDeck(deckId as string);
+  const isMounted = useIsMounted();
 
   const [isPageLoaded, setIsPageLoaded] = useState(false);
+
+  useEffect(() => {
+    const initLit = async () => {
+      const client = new LitJsSdk.LitNodeClient({ alertWhenUnauthorized: false, debug: false });
+      await client.connect();
+      window.litNodeClient = client;
+    };
+
+    if (!window.litNodeClient && isMounted()) {
+      initLit();
+    }
+  }, [isMounted]);
 
   // useEffect(() => {
   //   const onDisconnect = () => signOut();
@@ -60,13 +77,21 @@ export default function AppLayout(props: Props) {
   const setDeckId = useStore(state => state.setDeckId);
 
   const initData = useCallback(async () => {
-    if (!deckId || typeof deckId !== 'string') {
+    if (!deckId || typeof deckId !== 'string' || !deck.content) {
       return;
     }
 
     setDeckId(deckId);
 
-    const notes: NoteItem[] = deck.content?.notes ?? [];
+    const { encryptedZip, symmetricKey, accessControlConditions } = deck.content;
+    const { success, decodedZip, decodedSymmetricKey } = await decodeFromB64(encryptedZip, symmetricKey);
+    if (!success || !decodedZip || !decodedSymmetricKey) return;
+
+    const decryptedString = await decryptWithLit(decodedZip, decodedSymmetricKey, accessControlConditions);
+    const { notes, note_tree }: { notes: NoteItem[]; note_tree: NoteTreeItem[] | null } = JSON.parse(decryptedString);
+    // console.log(notes, note_tree);
+
+    // const notes: NoteItem[] = deck.content?.notes ?? [];
 
     // Redirect to most recent note or first note in database
     if (router.pathname.match(/^\/app\/[^/]+$/i)) {
@@ -87,14 +112,14 @@ export default function AppLayout(props: Props) {
 
     // Set notes
     const notesAsObj = notes.reduce<Record<NoteItem['id'], NoteItem>>((acc, note) => {
-      acc[note.id] = { ...note, content: JSON.parse(note.content) };
+      acc[note.id] = note;
       return acc;
     }, {});
     setNotes(notesAsObj);
 
     // Set note tree
-    if (deck.content?.note_tree) {
-      const noteTree: NoteTreeItem[] = [...JSON.parse(deck.content?.note_tree)];
+    if (note_tree) {
+      const noteTree: NoteTreeItem[] = [...note_tree];
       // This is a sanity check for removing notes in the noteTree that do not exist
       removeNonexistentNotes(noteTree, notesAsObj);
       // If there are notes that are not in the note tree, add them

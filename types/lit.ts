@@ -3,6 +3,10 @@ type ReturnValueTest = {
   value: string;
 };
 
+export type BooleanCondition = {
+  operator: 'and' | 'or';
+};
+
 export type AccessControlCondition = {
   contractAddress: string;
   chain: string;
