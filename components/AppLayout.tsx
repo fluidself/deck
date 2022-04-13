@@ -89,7 +89,7 @@ export default function AppLayout(props: Props) {
 
     const decryptedString = await decryptWithLit(decodedZip, decodedSymmetricKey, accessControlConditions);
     const { notes, note_tree }: { notes: NoteItem[]; note_tree: NoteTreeItem[] | null } = JSON.parse(decryptedString);
-    // console.log(notes, note_tree);
+    // console.log(notes);
 
     // const notes: NoteItem[] = deck.content?.notes ?? [];
 

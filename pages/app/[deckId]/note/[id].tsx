@@ -1,3 +1,5 @@
+// @ts-ignore
+import LitJsSdk from 'lit-js-sdk';
 import { withIronSessionSsr } from 'iron-session/next';
 import type { RequestState } from '@self.id/framework';
 import { useEffect, useState } from 'react';
@@ -10,6 +12,7 @@ import Note from 'components/Note';
 import { useStore } from 'lib/store';
 import usePrevious from 'utils/usePrevious';
 import { queryParamToArray } from 'utils/url';
+import useIsMounted from 'utils/useIsMounted';
 import useBlockBacklinks from 'editor/backlinks/useBlockBacklinks';
 // import checkProtectedPageAuth from 'utils/checkProtectedPageAuth';
 import getRequestState from 'utils/getRequestState';
@@ -25,10 +28,22 @@ export default function NotePage(props: Props) {
   const {
     query: { id: noteId, stack: stackQuery },
   } = router;
-
+  const isMounted = useIsMounted();
   const openNoteIds = useStore(state => state.openNoteIds);
   const setOpenNoteIds = useStore(state => state.setOpenNoteIds);
   const prevOpenNoteIds = usePrevious(openNoteIds);
+
+  useEffect(() => {
+    const initLit = async () => {
+      const client = new LitJsSdk.LitNodeClient({ alertWhenUnauthorized: false, debug: false });
+      await client.connect();
+      window.litNodeClient = client;
+    };
+
+    if (!window.litNodeClient && isMounted()) {
+      initLit();
+    }
+  }, [isMounted]);
 
   const pageTitle = useStore(state => {
     if (!noteId || typeof noteId !== 'string' || !state.notes[noteId]?.title) {

@@ -75,7 +75,7 @@ function FindOrCreateInput(props: Props, ref: ForwardedRef<HTMLInputElement>) {
           const newNote = {
             id: newNoteId,
             title: inputText,
-            content: JSON.stringify([{ id: uuidv4(), type: 'paragraph', children: [{ text: '' }] }]),
+            content: [{ id: uuidv4(), type: 'paragraph', children: [{ text: '' }] }],
             created_at: new Date().toISOString(),
             updated_at: new Date().toISOString(),
           };

@@ -36,18 +36,12 @@ export default function useDeleteNote() {
         }
       }
 
-      const success = await deck.deleteNote(noteId);
+      const additionalNoteUpdates = await deleteBacklinks(noteId);
+
+      const success = await deck.updateNotes(additionalNoteUpdates, noteId);
       if (!success) {
         return false;
       }
-
-      const promisePayloads = await deleteBacklinks(noteId);
-      const promises = [];
-      for (const payload of promisePayloads) {
-        promises.push(deck.updateNote(payload));
-      }
-
-      await Promise.all(promises);
 
       return true;
     },

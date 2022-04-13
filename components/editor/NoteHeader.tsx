@@ -26,7 +26,7 @@ import { Note } from 'types/supabase';
 import type { ModelTypes } from 'types/ceramic';
 import useImport from 'utils/useImport';
 import { queryParamToArray } from 'utils/url';
-import { useCurrentDeck } from 'utils/useCurrentDeck';
+// import { useCurrentDeck } from 'utils/useCurrentDeck';
 import Tooltip from 'components/Tooltip';
 import OpenSidebarButton from 'components/sidebar/OpenSidebarButton';
 import { DropdownItem } from 'components/Dropdown';
@@ -41,7 +41,7 @@ export default function NoteHeader() {
   const currentNote = useCurrentNote();
   const onImport = useImport();
   const { onDeleteClick } = useDeleteNote();
-  const { deck } = useCurrentDeck();
+  // const { deck } = useCurrentDeck();
   const [deckOptions, setDeckOptions] = useState<any>(null);
   const [selectedDeck, setSelectedDeck] = useState<any>(null);
   const viewerID = useViewerID();
@@ -53,20 +53,18 @@ export default function NoteHeader() {
     query: { deckId, stack: stackQuery },
   } = router;
 
-  // useEffect(() => {
-  //   if (!decksRecord || !decksRecord.isLoadable) return;
+  useEffect(() => {
+    if (!decksRecord || !decksRecord.isLoadable || decksRecord.isLoading) return;
 
-  //   if (!decksRecord.isLoading) {
-  //     const decks = decksRecord.content?.decks.map(deck => ({ ...deck, id: deck.id.replace('ceramic://', '') })) ?? [];
-  //     const decksToOptions = decks?.map(deck => ({
-  //       label: `${deck.deck_name} (${deck.id})`,
-  //       id: deck.id,
-  //       value: deck.id,
-  //     }));
-  //     setDeckOptions(decksToOptions);
-  //     setSelectedDeck(decksToOptions?.filter(deckOption => deckOption.id === deck?.id)[0]);
-  //   }
-  // }, [decksRecord, deck, deck?.id]);
+    const decks = decksRecord.content?.decks.map(deck => ({ ...deck, id: deck.id.replace('ceramic://', '') })) ?? [];
+    const decksToOptions = decks?.map(deck => ({
+      label: `${deck.deck_name} (${deck.id})`,
+      id: deck.id,
+      value: deck.id,
+    }));
+    setDeckOptions(decksToOptions);
+    setSelectedDeck(decksToOptions?.filter(deckOption => deckOption.id === deckId)[0]);
+  }, [decksRecord.isLoading, deckId]);
 
   const isSidebarButtonVisible = useStore(state => !state.isSidebarOpen && state.openNoteIds?.[0] === currentNote.id);
   const isCloseButtonVisible = useStore(state => state.openNoteIds.length > 1);

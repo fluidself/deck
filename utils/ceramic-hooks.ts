@@ -80,51 +80,60 @@ export function useDeck(id: string) {
   const content = deckDoc.content;
   const isEditable = deckDoc.isController;
 
+  // TODO: DRY up
   // TODO: handle errors / loading state?
 
-  // const addNote = useCallback(
-  //   async newNote => {
-  //     if (connection.status !== 'connected') await connect();
-  //     if (!deckDoc.content?.notes?.length || !newNote) return false;
-
-  //     try {
-  //       await deckDoc.update({ ...deckDoc.content, notes: [...deckDoc.content.notes, newNote] });
-
-  //       upsertNoteStore({ ...newNote, content: JSON.parse(newNote.content) });
-  //       return true;
-  //     } catch (error) {
-  //       console.error(error);
-  //       return false;
-  //     }
-  //   },
-  //   [deckDoc, connection, connect],
-  // );
-
-  const updateNote = useCallback(
-    async noteUpdate => {
+  const addNote = useCallback(
+    async newNote => {
       if (connection.status !== 'connected') await connect();
-      if (!deckDoc.content || !noteUpdate) return { success: false };
+      if (!deckDoc.content || !newNote) return false;
 
       try {
-        const { encryptedZip, symmetricKey, accessControlConditions } = deckDoc.content;
-        console.log(accessControlConditions);
-        const { success, decodedZip, decodedSymmetricKey } = await decodeFromB64(encryptedZip, symmetricKey);
-        console.log(success, decodedZip, decodedSymmetricKey);
-        if (!success || !decodedZip || !decodedSymmetricKey) return { success: false };
-
-        const decryptedString = await decryptWithLit(decodedZip, decodedSymmetricKey, accessControlConditions);
-        console.log(decryptedString);
-        const { notes, note_tree }: { notes: NoteItem[]; note_tree: NoteTreeItem[] | null } = JSON.parse(decryptedString);
-        const otherNotes = notes.filter(note => note.id !== noteUpdate.id);
-        const duplicateTitle = otherNotes.findIndex(note => note.title === noteUpdate.title) >= 0;
-
-        if (duplicateTitle) {
-          return { success: false, error: `There's already a note called ${noteUpdate.title}. Please use a different title.` };
+        const { notes, note_tree, accessControlConditions } = await decryptDeck(deckDoc.content);
+        if (!notes || !accessControlConditions) {
+          return false;
         }
 
         const toEncrypt = JSON.stringify({
-          notes,
+          notes: [...notes, newNote],
           note_tree,
+        });
+        const [encryptedZipBase64, encryptedSymmetricKeyBase64] = await encryptWithLit(toEncrypt, accessControlConditions);
+
+        await deckDoc.update({
+          encryptedZip: encryptedZipBase64,
+          symmetricKey: encryptedSymmetricKeyBase64,
+          accessControlConditions,
+        });
+
+        upsertNoteStore({ ...newNote, content: newNote.content });
+        return true;
+      } catch (error) {
+        console.error(error);
+        return false;
+      }
+    },
+    [deckDoc, connection, connect],
+  );
+
+  const updateNotes = useCallback(
+    async (noteUpdates, noteToDelete = null) => {
+      if (connection.status !== 'connected') await connect();
+      if (!deckDoc.content) return false;
+
+      try {
+        const { notes, note_tree, accessControlConditions } = await decryptDeck(deckDoc.content);
+        if (!notes || !accessControlConditions) {
+          return false;
+        }
+
+        const noteUpdateIds = noteUpdates.map((note: NoteItem) => note.id);
+        let otherNotes = noteToDelete ? notes.filter(note => note.id !== noteToDelete) : notes;
+        otherNotes = otherNotes.filter(note => !noteUpdateIds.includes(note.id));
+
+        const toEncrypt = JSON.stringify({
+          notes: [...otherNotes, ...noteUpdates],
+          note_tree: noteToDelete ? store.getState().noteTree : note_tree,
         });
         const [encryptedZipBase64, encryptedSymmetricKeyBase64] = await encryptWithLit(toEncrypt, accessControlConditions);
 
@@ -136,53 +145,53 @@ export function useDeck(id: string) {
 
         // Don't update the note if it is currently open
         const openNoteIds = store.getState().openNoteIds;
-        if (!openNoteIds.includes(noteUpdate.id)) {
-          updateNoteStore({ ...noteUpdate, content: JSON.parse(noteUpdate.content) });
+        noteUpdates.forEach((noteUpdate: NoteItem) => {
+          if (!openNoteIds.includes(noteUpdate.id)) {
+            updateNoteStore({ ...noteUpdate, content: noteUpdate.content });
+          }
+        });
+
+        if (noteToDelete) {
+          deleteNoteStore(noteToDelete);
         }
 
-        return { success: true };
+        return true;
       } catch (error) {
         console.error(error);
-        return { success: false };
+        return false;
       }
     },
     [deckDoc, connection, connect],
   );
 
-  // const deleteNote = useCallback(
-  //   async noteId => {
-  //     if (connection.status !== 'connected') await connect();
-  //     if (!deckDoc.content?.notes?.length || !noteId) return false;
+  const updateNoteTree = useCallback(async () => {
+    if (connection.status !== 'connected') await connect();
+    if (!deckDoc.content) return false;
 
-  //     try {
-  //       const remainingNotes = deckDoc.content.notes.filter(note => note.id !== noteId);
+    try {
+      const { notes, accessControlConditions } = await decryptDeck(deckDoc.content);
+      if (!notes || !accessControlConditions) {
+        return false;
+      }
 
-  //       await deckDoc.update({ ...deckDoc.content, notes: remainingNotes, note_tree: JSON.stringify(store.getState().noteTree) });
+      const toEncrypt = JSON.stringify({
+        notes,
+        note_tree: store.getState().noteTree,
+      });
+      const [encryptedZipBase64, encryptedSymmetricKeyBase64] = await encryptWithLit(toEncrypt, accessControlConditions);
 
-  //       deleteNoteStore(noteId);
+      await deckDoc.update({
+        encryptedZip: encryptedZipBase64,
+        symmetricKey: encryptedSymmetricKeyBase64,
+        accessControlConditions,
+      });
 
-  //       return true;
-  //     } catch (error) {
-  //       console.error(error);
-  //       return false;
-  //     }
-  //   },
-  //   [deckDoc, connection, connect],
-  // );
-
-  // const updateNoteTree = useCallback(async () => {
-  //   if (connection.status !== 'connected') await connect();
-  //   if (!deckDoc.content?.notes?.length) return false;
-
-  //   try {
-  //     await deckDoc.update({ ...deckDoc.content, note_tree: JSON.stringify(store.getState().noteTree) });
-
-  //     return true;
-  //   } catch (error) {
-  //     console.error(error);
-  //     return false;
-  //   }
-  // }, [deckDoc, connection, connect]);
+      return true;
+    } catch (error) {
+      console.error(error);
+      return false;
+    }
+  }, [deckDoc, connection, connect]);
 
   return {
     isEditable,
@@ -192,9 +201,22 @@ export function useDeck(id: string) {
     isMutating: deckDoc.isMutating,
     content,
     error: deckDoc.error,
-    // addNote,
-    updateNote,
-    // deleteNote,
-    // updateNoteTree,
+    addNote,
+    updateNotes,
+    updateNoteTree,
   };
 }
+
+const decryptDeck = async (deck: Deck) => {
+  const { encryptedZip, symmetricKey, accessControlConditions } = deck;
+  const { success, decodedZip, decodedSymmetricKey } = await decodeFromB64(encryptedZip, symmetricKey);
+  // TODO: fix
+  if (!success || !decodedZip || !decodedSymmetricKey) {
+    return { notes: [], note_tree: null, accessControlConditions: null };
+  }
+
+  const decryptedString = await decryptWithLit(decodedZip, decodedSymmetricKey, accessControlConditions);
+  const { notes, note_tree }: { notes: NoteItem[]; note_tree: NoteTreeItem[] | null } = JSON.parse(decryptedString);
+
+  return { notes, note_tree, accessControlConditions };
+};

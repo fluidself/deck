@@ -1,7 +1,6 @@
 import { createEditor, Editor, Element, Transforms } from 'slate';
 import { ElementType } from 'types/slate';
 import { Note } from 'types/supabase';
-import type { NoteItem } from 'types/ceramic';
 import { store } from 'lib/store';
 import { computeLinkedBacklinks } from './useBacklinks';
 
@@ -39,21 +38,20 @@ const deleteBacklinks = async (noteId: string) => {
     store.getState().updateNote(newNote);
   }
 
-  // It would be better if we could consolidate the update requests into one request
-  const promisePayloads = [];
+  const updatePayloads = [];
   for (const data of updateData) {
     const note = notes[data.id];
 
-    promisePayloads.push({
+    updatePayloads.push({
       ...data,
       title: note.title,
-      content: JSON.stringify(data.content),
+      content: data.content,
       created_at: note.created_at,
       updated_at: new Date().toISOString(),
     });
   }
 
-  return promisePayloads;
+  return updatePayloads;
 };
 
 export default deleteBacklinks;

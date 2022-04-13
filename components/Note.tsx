@@ -2,7 +2,6 @@ import { memo, useCallback, useEffect, useMemo, useState } from 'react';
 import type { Path } from 'slate';
 import { toast } from 'react-toastify';
 import { useRouter } from 'next/router';
-import { v4 as uuidv4 } from 'uuid';
 import Editor from 'components/editor/Editor';
 import Title from 'components/editor/Title';
 import { store, useStore } from 'lib/store';
@@ -15,15 +14,7 @@ import Backlinks from './editor/backlinks/Backlinks';
 import NoteHeader from './editor/NoteHeader';
 import ErrorBoundary from './ErrorBoundary';
 
-const SYNC_DEBOUNCE_MS = 2500;
-
-// type NoteUpdate = {
-//   id: string;
-//   title: string;
-//   content: Array;
-//   created_at: string;
-//   updated_at: string;
-// };
+const SYNC_DEBOUNCE_MS = 15000;
 
 type Props = {
   noteId: string;
@@ -67,31 +58,29 @@ function Note(props: Props) {
   }, []);
 
   const handleNoteUpdate = useCallback(
-    async (note, noteUpdate: NoteItem) => {
+    async (noteUpdate: NoteItem) => {
       if (!noteUpdate.title || noteUpdate.title === 'Untitled') {
         toast.error('Please give your note a title.');
         return;
       }
 
-      const { success, error } = await deck.updateNote(noteUpdate);
+      let noteUpdates: NoteItem[] = [noteUpdate];
+
+      if (!syncState.isTitleSynced) {
+        const additionalNoteUpdates = await updateBacklinks(noteUpdate.title, noteUpdate.id);
+        noteUpdates = [...noteUpdates, ...additionalNoteUpdates];
+      }
+
+      const success = await deck.updateNotes(noteUpdates);
 
       if (!success) {
-        toast.error(error ?? 'Something went wrong saving your note. Please try again later.');
+        toast.error('Something went wrong saving your note. Please try again later.');
         return;
       }
 
-      if (note.title) {
-        const promisePayloads = await updateBacklinks(note.title, note.id);
-        const promises = [];
-        for (const payload of promisePayloads) {
-          promises.push(deck.updateNote(payload));
-        }
-
-        await Promise.all(promises);
-      }
       setSyncState({ isTitleSynced: true, isContentSynced: true });
     },
-    [deck],
+    [deck, syncState],
   );
 
   // Save the note if it changes and it hasn't been saved yet
@@ -107,10 +96,10 @@ function Note(props: Props) {
       updated_at: new Date().toISOString(),
     };
 
-    // if (!syncState.isContentSynced || !syncState.isTitleSynced) {
-    //   const handler = setTimeout(() => handleNoteUpdate(note, noteUpdate), SYNC_DEBOUNCE_MS);
-    //   return () => clearTimeout(handler);
-    // }
+    if (!syncState.isContentSynced || !syncState.isTitleSynced) {
+      const handler = setTimeout(() => handleNoteUpdate(noteUpdate), SYNC_DEBOUNCE_MS);
+      return () => clearTimeout(handler);
+    }
   }, [noteId, syncState, handleNoteUpdate]);
 
   // Prompt the user with a dialog box about unsaved changes if they navigate away

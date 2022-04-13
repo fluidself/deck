@@ -35,7 +35,7 @@ export async function encryptWithLit(
   const encryptedSymmetricKey = await window.litNodeClient.saveEncryptionKey({
     accessControlConditions,
     symmetricKey,
-    authSig: authSig,
+    authSig,
     chain,
     permanent: false,
   });
