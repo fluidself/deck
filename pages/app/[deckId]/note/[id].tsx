@@ -13,7 +13,6 @@ import { useStore } from 'lib/store';
 import usePrevious from 'utils/usePrevious';
 import { queryParamToArray } from 'utils/url';
 import useBlockBacklinks from 'editor/backlinks/useBlockBacklinks';
-// import checkProtectedPageAuth from 'utils/checkProtectedPageAuth';
 import getRequestState from 'utils/getRequestState';
 
 type Props = {

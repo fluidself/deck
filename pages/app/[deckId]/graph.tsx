@@ -5,12 +5,12 @@ import { createEditor, Editor, Element, Node } from 'slate';
 import { ironOptions } from 'constants/iron-session';
 import type { NoteLink } from 'types/slate';
 import { ElementType } from 'types/slate';
+import { useStore } from 'lib/store';
+import getRequestState from 'utils/getRequestState';
 import type { GraphData } from 'components/ForceGraph';
 import ForceGraph from 'components/ForceGraph';
-import { useStore } from 'lib/store';
 import ErrorBoundary from 'components/ErrorBoundary';
 import OpenSidebarButton from 'components/sidebar/OpenSidebarButton';
-import checkProtectedPageAuth from 'utils/checkProtectedPageAuth';
 
 export default function Graph() {
   const notes = useStore(state => state.notes);
@@ -93,9 +93,16 @@ const getRadius = (numOfLinks: number) => {
 };
 
 export const getServerSideProps = withIronSessionSsr(async function ({ params, req }) {
-  const { user, allowedDeck } = req.session;
+  const cookie = req.headers.cookie;
   const deckId = params?.deckId;
-  const authorized = await checkProtectedPageAuth(deckId, user, allowedDeck);
 
-  return authorized ? { props: {} } : { redirect: { destination: '/', permanent: false } };
+  if (deckId == null || typeof deckId !== 'string') {
+    return {
+      redirect: { destination: '/', permanent: false },
+    };
+  }
+
+  return {
+    props: { deckId, state: await getRequestState(cookie) },
+  };
 }, ironOptions);
