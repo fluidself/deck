@@ -143,11 +143,11 @@ export default function AppLayout(props: Props) {
     if (!viewerID?.id) {
       // Redirect to root page if there is no user logged in
       router.replace('/');
-    } else if (!isPageLoaded && !deck.isLoading) {
+    } else if (!isPageLoaded && deck && !deck.isLoading) {
       // Initialize data if there is a user and the data has not been initialized yet
       initData();
     }
-  }, [router, viewerID, deck.isLoading, deck.content, isPageLoaded, initData]);
+  }, [router, viewerID, deck, isPageLoaded, initData]);
 
   const [isFindOrCreateModalOpen, setIsFindOrCreateModalOpen] = useState(false);
   // const [isSettingsOpen, setIsSettingsOpen] = useState(false);

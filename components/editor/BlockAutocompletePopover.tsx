@@ -32,7 +32,7 @@ type Option = {
 };
 
 export default function BlockAutocompletePopover() {
-  const { deck } = useCurrentDeck();
+  const currentDeck = useCurrentDeck();
   const editor = useSlate();
 
   const [isVisible, setIsVisible] = useState(false);
@@ -110,7 +110,7 @@ export default function BlockAutocompletePopover() {
 
   const onOptionClick = useCallback(
     async (option?: Option) => {
-      if (!option || !deck) {
+      if (!option || !currentDeck) {
         return;
       }
 
@@ -165,7 +165,7 @@ export default function BlockAutocompletePopover() {
 
       hidePopover();
     },
-    [editor, deck, hidePopover, getRegexResult],
+    [editor, currentDeck, hidePopover, getRegexResult],
   );
 
   const onKeyDown = useCallback(

@@ -7,15 +7,14 @@ import useDeck from 'utils/useDeck';
 
 export default function useDeleteNote() {
   const router = useRouter();
-  const {
-    deck: { id: deckId },
-  } = useCurrentDeck();
-  const deck = useDeck(deckId);
+  const currentDeck = useCurrentDeck();
+  const deck = useDeck(currentDeck.deck?.id);
   const openNoteIds = useStore(state => state.openNoteIds);
 
   const onDeleteClick = useCallback(
     async (noteId: string) => {
       if (!deck) return;
+      const deckId = currentDeck.deck?.id;
       const deletedNoteIndex = openNoteIds.findIndex(openNoteId => openNoteId === noteId);
 
       if (deletedNoteIndex !== -1) {

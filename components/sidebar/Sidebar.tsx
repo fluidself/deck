@@ -29,7 +29,8 @@ type Props = {
 function Sidebar(props: Props) {
   const { setIsFindOrCreateModalOpen, className } = props;
 
-  const { deck } = useCurrentDeck();
+  const currentDeck = useCurrentDeck();
+  // const deck = useDeck(currentDeck.deck?.id);
   const isSidebarOpen = useStore(state => state.isSidebarOpen);
   const setIsSidebarOpen = useStore(state => state.setIsSidebarOpen);
   const hideSidebarOnMobile = useCallback(() => {
@@ -41,45 +42,45 @@ function Sidebar(props: Props) {
   const [processingAccess, setProcessingAccess] = useState<boolean>(false);
   const [createJoinRenameModal, setCreateJoinRenameModal] = useState<any>({ open: false, type: '' });
 
-  const provisionAccess = async (accessControlConditions: AccessControlCondition[]) => {
-    if (!deck || !accessControlConditions) return;
+  // const provisionAccess = async (accessControlConditions: AccessControlCondition[]) => {
+  //   if (!deck || !accessControlConditions) return;
 
-    try {
-      const chain = accessControlConditions[0].chain;
-      const authSig: AuthSig = await LitJsSdk.checkAndSignAuthMessage({ chain });
+  //   try {
+  //     const chain = accessControlConditions[0].chain;
+  //     const authSig: AuthSig = await LitJsSdk.checkAndSignAuthMessage({ chain });
 
-      if (!authSig) {
-        toast.error('Provisioning access failed.');
-        return false;
-      }
+  //     if (!authSig) {
+  //       toast.error('Provisioning access failed.');
+  //       return false;
+  //     }
 
-      const resourceId: ResourceId = {
-        baseUrl: process.env.BASE_URL ?? '',
-        path: `/app/${deck?.id}`,
-        orgId: '',
-        role: '',
-        extraData: '',
-      };
+  //     const resourceId: ResourceId = {
+  //       baseUrl: process.env.BASE_URL ?? '',
+  //       path: `/app/${deck?.id}`,
+  //       orgId: '',
+  //       role: '',
+  //       extraData: '',
+  //     };
 
-      await window.litNodeClient.saveSigningCondition({
-        accessControlConditions,
-        chain,
-        authSig,
-        resourceId,
-        permanent: false,
-      });
+  //     await window.litNodeClient.saveSigningCondition({
+  //       accessControlConditions,
+  //       chain,
+  //       authSig,
+  //       resourceId,
+  //       permanent: false,
+  //     });
 
-      const accessParamsToSave: AccessParams = { resource_id: resourceId, access_control_conditions: accessControlConditions };
-      await supabase.from<Deck>('decks').update({ access_params: accessParamsToSave }).eq('id', deck.id);
+  //     const accessParamsToSave: AccessParams = { resource_id: resourceId, access_control_conditions: accessControlConditions };
+  //     await supabase.from<Deck>('decks').update({ access_params: accessParamsToSave }).eq('id', deck.id);
 
-      toast.success('Access to your DECK was configured');
-      return true;
-    } catch (e: any) {
-      console.error(e);
-      toast.error('Provisioning access failed.');
-      return false;
-    }
-  };
+  //     toast.success('Access to your DECK was configured');
+  //     return true;
+  //   } catch (e: any) {
+  //     console.error(e);
+  //     toast.error('Provisioning access failed.');
+  //     return false;
+  //   }
+  // };
 
   const transition = useTransition<
     boolean,
@@ -150,7 +151,7 @@ function Sidebar(props: Props) {
                   setIsFindOrCreateModalOpen(isOpen => !isOpen);
                 }}
               />
-              {deck && <GraphButton onClick={hideSidebarOnMobile} deckId={deck?.id} />}
+              {currentDeck && <GraphButton onClick={hideSidebarOnMobile} deckId={currentDeck.deck?.id} />}
               <SidebarContent
                 className="flex-1 mt-3 overflow-x-hidden overflow-y-auto"
                 setIsFindOrCreateModalOpen={setIsFindOrCreateModalOpen}
@@ -160,13 +161,13 @@ function Sidebar(props: Props) {
           {isShareModalOpen && (
             <ShareModal
               onClose={() => setIsShareModalOpen(false)}
-              deckToShare={deck?.id}
+              deckToShare={currentDeck.deck?.id}
               processingAccess={processingAccess}
               onAccessControlConditionsSelected={async (acc: AccessControlCondition[]) => {
                 setProcessingAccess(true);
-                const success = await provisionAccess(acc);
-                if (success) return true;
-                setProcessingAccess(false);
+                // const success = await provisionAccess(acc);
+                // if (success) return true;
+                // setProcessingAccess(false);
               }}
               showStep={'ableToAccess'}
             />

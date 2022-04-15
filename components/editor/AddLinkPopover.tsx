@@ -35,10 +35,8 @@ type Props = {
 
 export default function AddLinkPopover(props: Props) {
   const { addLinkPopoverState, setAddLinkPopoverState } = props;
-  const {
-    deck: { id: deckId },
-  } = useCurrentDeck();
-  const deck = useDeck(deckId as string);
+  const currentDeck = useCurrentDeck();
+  const deck = useDeck(currentDeck.deck?.id);
   const inputRef = useRef<HTMLInputElement | null>(null);
   const [linkText, setLinkText] = useState<string>('');
   const editor = useSlate();

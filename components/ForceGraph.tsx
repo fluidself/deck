@@ -39,7 +39,7 @@ type Props = {
 export default function ForceGraph(props: Props) {
   const { data, className } = props;
 
-  const { deck } = useCurrentDeck();
+  const currentDeck = useCurrentDeck();
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const transform = useRef(zoomIdentity);
   const hoveredNode = useRef<NodeDatum | null>(null);
@@ -251,11 +251,11 @@ export default function ForceGraph(props: Props) {
         const clickedNode = getNode(simulation, context.canvas, x, y);
 
         // Redirect to note when a node is clicked
-        if (clickedNode && deck) {
-          router.push(`/app/${deck.id}/note/${clickedNode.id}`);
+        if (clickedNode && currentDeck.deck) {
+          router.push(`/app/${currentDeck.deck.id}/note/${clickedNode.id}`);
         }
       });
-  }, [data, renderCanvas, router, deck]);
+  }, [data, renderCanvas, router, currentDeck]);
 
   /**
    * Set canvas width and height when its container changes size

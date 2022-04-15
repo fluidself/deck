@@ -17,10 +17,10 @@ import { ElementType, NoteLink } from 'types/slate';
 import { Note } from 'types/supabase';
 
 export default function useImport() {
-  const { deck } = useCurrentDeck();
+  const currentDeck = useCurrentDeck();
 
   const onImport = useCallback(() => {
-    if (!deck) {
+    if (!currentDeck) {
       return;
     }
 
@@ -67,12 +67,12 @@ export default function useImport() {
         const { content: slateContent, upsertData: newUpsertData } = fixNoteLinks(
           result as Descendant[],
           noteTitleToIdCache,
-          deck.id,
+          currentDeck.deck.id,
         );
 
         noteLinkUpsertData.push(...newUpsertData);
         upsertData.push({
-          deck_id: deck.id,
+          deck_id: currentDeck.deck.id,
           title: fileName,
           content: slateContent.length > 0 ? slateContent : getDefaultEditorValue(),
         });
@@ -99,7 +99,7 @@ export default function useImport() {
     };
 
     input.click();
-  }, [deck]);
+  }, [currentDeck]);
 
   return onImport;
 }

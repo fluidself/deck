@@ -37,10 +37,8 @@ function SidebarNotesTree(props: Props) {
   const { data, className } = props;
 
   const router = useRouter();
-  const {
-    deck: { id: deckId },
-  } = useCurrentDeck();
-  const deck = useDeck(deckId as string);
+  const currentDeck = useCurrentDeck();
+  const deck = useDeck(currentDeck.deck?.id);
 
   const currentNoteId = useMemo(() => {
     const id = router.query.id;

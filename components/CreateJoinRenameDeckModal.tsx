@@ -10,7 +10,6 @@ import useHotkeys from 'utils/useHotkeys';
 import useCreateDeck from 'utils/useCreateDeck';
 import Button from 'components/home/Button';
 import { useCurrentDeck } from 'utils/useCurrentDeck';
-// import createOnboardingNotes from 'utils/createOnboardingNotes';
 
 type Props = {
   type: 'create' | 'join' | 'rename';
@@ -20,7 +19,7 @@ type Props = {
 export default function CreateJoinRenameDeckModal(props: Props) {
   const { type, closeModal } = props;
 
-  const { deck } = useCurrentDeck();
+  const currentDeck = useCurrentDeck();
   const [connection, connect] = useConnection();
   const createDeck = useCreateDeck();
   const decksRecord = useViewerRecord<ModelTypes, 'decks'>('decks');
@@ -56,7 +55,7 @@ export default function CreateJoinRenameDeckModal(props: Props) {
   };
 
   const renameDeck = async () => {
-    if (!decksRecord || !decksRecord.isLoadable || !inputText) return;
+    if (!currentDeck.deck || !decksRecord || !decksRecord.isLoadable || !inputText) return;
     setProcessing(true);
 
     if (connection.status !== 'connected') {
@@ -65,13 +64,13 @@ export default function CreateJoinRenameDeckModal(props: Props) {
 
     try {
       const decks = decksRecord.content?.decks ?? [];
-      const otherDecks = decks.filter(d => d.id !== `ceramic://${deck.id}`);
-      await decksRecord.set({ decks: [...otherDecks, { id: `ceramic://${deck.id}`, deck_name: inputText }] });
+      const otherDecks = decks.filter(d => d.id !== `ceramic://${currentDeck.deck.id}`);
+      await decksRecord.set({ decks: [...otherDecks, { id: `ceramic://${currentDeck.deck.id}`, deck_name: inputText }] });
 
       toast.success(`Successfully renamed ${inputText}`);
       setProcessing(false);
       closeModal();
-      window.location.assign(`${process.env.BASE_URL}/app/${deck.id}`);
+      window.location.assign(`${process.env.BASE_URL}/app/${currentDeck.deck.id}`);
     } catch (error) {
       console.error(error);
       toast.error('There was an error updating the DECK');

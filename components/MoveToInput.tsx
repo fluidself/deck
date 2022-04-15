@@ -27,10 +27,8 @@ type Props = {
 
 function MoveToInput(props: Props, ref: ForwardedRef<HTMLInputElement>) {
   const { noteId, onOptionClick: onOptionClickCallback, className = '' } = props;
-  const {
-    deck: { id: deckId },
-  } = useCurrentDeck();
-  const deck = useDeck(deckId as string);
+  const currentDeck = useCurrentDeck();
+  const deck = useDeck(currentDeck.deck?.id);
 
   const [inputText, setInputText] = useState('');
   const [selectedOptionIndex, setSelectedOptionIndex] = useState<number>(0);
@@ -79,7 +77,7 @@ function MoveToInput(props: Props, ref: ForwardedRef<HTMLInputElement>) {
 
   const onOptionClick = useCallback(
     async (option: Option) => {
-      if (!deckId) {
+      if (!currentDeck.deck.id) {
         return;
       }
 
@@ -95,7 +93,7 @@ function MoveToInput(props: Props, ref: ForwardedRef<HTMLInputElement>) {
 
       await deck.updateNoteTree();
     },
-    [deck, deckId, onOptionClickCallback, noteId, moveNoteTreeItem],
+    [deck, currentDeck, onOptionClickCallback, noteId, moveNoteTreeItem],
   );
 
   const onKeyDown = useCallback(
