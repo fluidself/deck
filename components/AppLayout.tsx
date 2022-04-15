@@ -13,7 +13,7 @@ import { useStore, store, NoteTreeItem, getNoteTreeItem, Notes, SidebarTab } fro
 // import { Note, Deck } from 'types/supabase';
 import type { Deck, ModelTypes, NoteItem } from 'types/ceramic';
 import { ProvideCurrentDeck } from 'utils/useCurrentDeck';
-import { useDeck } from 'utils/ceramic-hooks';
+import useDeck from 'utils/useDeck';
 import useHotkeys from 'utils/useHotkeys';
 // import { useAuth } from 'utils/useAuth';
 import { isMobile } from 'utils/device';
@@ -41,18 +41,6 @@ export default function AppLayout(props: Props) {
 
   const [isPageLoaded, setIsPageLoaded] = useState(false);
 
-  useEffect(() => {
-    const initLit = async () => {
-      const client = new LitJsSdk.LitNodeClient({ alertWhenUnauthorized: false, debug: false });
-      await client.connect();
-      window.litNodeClient = client;
-    };
-
-    if (!window.litNodeClient && isMounted()) {
-      initLit();
-    }
-  }, [isMounted]);
-
   // useEffect(() => {
   //   const onDisconnect = () => signOut();
   //   accountData?.connector?.on('disconnect', onDisconnect);
@@ -76,7 +64,17 @@ export default function AppLayout(props: Props) {
   const setNoteTree = useStore(state => state.setNoteTree);
   const setDeckId = useStore(state => state.setDeckId);
 
+  const initLit = async () => {
+    const client = new LitJsSdk.LitNodeClient({ alertWhenUnauthorized: false, debug: false });
+    await client.connect();
+    window.litNodeClient = client;
+  };
+
   const initData = useCallback(async () => {
+    if (!window.litNodeClient && isMounted()) {
+      await initLit();
+    }
+
     if (!deckId || typeof deckId !== 'string' || !deck.content) {
       return;
     }
@@ -137,7 +135,7 @@ export default function AppLayout(props: Props) {
     }
 
     setIsPageLoaded(true);
-  }, [deckId, deck, router, setNotes, setNoteTree, setDeckId]);
+  }, [isMounted, deckId, deck, router, setNotes, setNoteTree, setDeckId]);
 
   useEffect(() => {
     // TODO: finetune?

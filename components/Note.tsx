@@ -8,7 +8,7 @@ import { store, useStore } from 'lib/store';
 import { ProvideCurrentNote } from 'utils/useCurrentNote';
 import { caseInsensitiveStringEqual } from 'utils/string';
 import type { NoteItem } from 'types/ceramic';
-import { useDeck } from 'utils/ceramic-hooks';
+import useDeck from 'utils/useDeck';
 import updateBacklinks from 'editor/backlinks/updateBacklinks';
 import Backlinks from './editor/backlinks/Backlinks';
 import NoteHeader from './editor/NoteHeader';

@@ -16,7 +16,7 @@ import {
 import { SortableContext, verticalListSortingStrategy } from '@dnd-kit/sortable';
 import { toast } from 'react-toastify';
 import { useCurrentDeck } from 'utils/useCurrentDeck';
-import { useDeck } from 'utils/ceramic-hooks';
+import useDeck from 'utils/useDeck';
 import { NoteTreeItem, useStore } from 'lib/store';
 import Portal from 'components/Portal';
 import SidebarNoteLink from './SidebarNoteLink';

@@ -1,14 +1,14 @@
 import type { StreamMetadata } from '@ceramicnetwork/common';
 import type { TileDocument } from '@ceramicnetwork/stream-tile';
 import { PublicID, useConnection, useCore, usePublicRecord, useViewerID, useViewerRecord } from '@self.id/framework';
-import type { PublicRecord } from '@self.id/framework';
+// import type { PublicRecord } from '@self.id/framework';
 import { useCallback } from 'react';
 import { useMutation, useQuery, useQueryClient } from 'react-query';
 import { NoteTreeItem, store, useStore } from 'lib/store';
 import type { ModelTypes, Deck, Decks, NoteItem } from 'types/ceramic';
 import { decodeFromB64, encryptWithLit, decryptWithLit } from 'utils/encryption';
 
-export type TileDoc<ContentType> = {
+type TileDoc<ContentType> = {
   isLoading: boolean;
   content?: ContentType;
   metadata?: StreamMetadata;
@@ -20,7 +20,7 @@ export type TileDoc<ContentType> = {
   update(content: ContentType): Promise<void>;
 };
 
-export function useTileDoc<ContentType>(id: string): TileDoc<ContentType> {
+function useTileDoc<ContentType>(id: string): TileDoc<ContentType> {
   const queryClient = useQueryClient();
   const core = useCore();
   const viewerID = useViewerID();
@@ -64,12 +64,12 @@ export function useTileDoc<ContentType>(id: string): TileDoc<ContentType> {
   };
 }
 
-export function useDecksRecord(did: string): PublicRecord<Decks | null> {
-  // return usePublicRecord<ModelTypes, 'decks'>('decks', did);
-  return useViewerRecord<ModelTypes, 'decks'>('decks');
-}
+// export function useDecksRecord(did: string): PublicRecord<Decks | null> {
+//   // return usePublicRecord<ModelTypes, 'decks'>('decks', did);
+//   return useViewerRecord<ModelTypes, 'decks'>('decks');
+// }
 
-export function useDeck(id: string) {
+export default function useDeck(id: string) {
   const [connection, connect] = useConnection<ModelTypes>();
   const deckDoc = useTileDoc<Deck>(id);
 

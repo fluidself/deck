@@ -10,7 +10,6 @@ import selectedIcon from '@self.id/multiauth/assets/icon-selected.svg';
 import ethereumLogo from '@self.id/multiauth/assets/ethereum.png';
 import metaMaskLogo from '@self.id/multiauth/assets/metamask.png';
 import type { ModelTypes } from 'types/ceramic';
-// import { ProvideAuth } from 'utils/useAuth';
 import AppLayout from 'components/AppLayout';
 import ServiceWorker from 'components/ServiceWorker';
 import { CERAMIC_NETWORK } from 'constants/ceramic';
@@ -58,7 +57,6 @@ export default function MyApp({ Component, pageProps, router }: AppProps) {
           client={{ ceramic: CERAMIC_NETWORK, model }}
           state={state}
         >
-          {/* <ProvideAuth> */}
           {router.pathname.startsWith('/app/') ? (
             <AppLayout>
               <Component {...props} />
@@ -66,7 +64,6 @@ export default function MyApp({ Component, pageProps, router }: AppProps) {
           ) : (
             <Component {...props} />
           )}
-          {/* </ProvideAuth> */}
         </SelfIDProvider>
       </ServiceWorker>
       <ToastContainer position="top-center" hideProgressBar newestOnTop={true} theme="colored" />

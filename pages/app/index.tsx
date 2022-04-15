@@ -4,8 +4,6 @@ import { withIronSessionSsr } from 'iron-session/next';
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/router';
 // import { useAccount } from 'wagmi';
-// import useSWR from 'swr';
-import { useConnection, useViewerRecord, useCore } from '@self.id/framework';
 import { toast } from 'react-toastify';
 import { ironOptions } from 'constants/iron-session';
 // import supabase from 'lib/supabase';
@@ -13,12 +11,11 @@ import { ironOptions } from 'constants/iron-session';
 // import selectDecks from 'lib/api/selectDecks';
 // import { Deck } from 'types/supabase';
 import useIsMounted from 'utils/useIsMounted';
-import { useAuth } from 'utils/useAuth';
+// import { useAuth } from 'utils/useAuth';
 import { AuthSig } from 'types/lit';
 import type { ModelTypes, DeckItem } from 'types/ceramic';
 import { createRequestClient } from 'utils/getRequestState';
-import createOnboardingNotes from 'utils/createOnboardingNotes';
-import { encryptWithLit } from 'utils/encryption';
+import useCreateDeck from 'utils/useCreateDeck';
 import HomeHeader from 'components/home/HomeHeader';
 import RequestDeckAccess from 'components/home/RequestDeckAccess';
 import ProvideDeckName from 'components/home/ProvideDeckName';
@@ -31,13 +28,8 @@ export default function AppHome() {
   // const { data: decks } = useSWR(user ? 'decks' : null, () => selectDecks(user?.id), { revalidateOnFocus: false });
   const [requestingAccess, setRequestingAccess] = useState<boolean>(false);
   const [creatingDeck, setCreatingDeck] = useState<boolean>(false);
-  const decksRecord = useViewerRecord<ModelTypes, 'decks'>('decks');
-  const accountsRecord = useViewerRecord<ModelTypes, 'cryptoAccounts'>('cryptoAccounts');
-  const [connection, connect] = useConnection();
-  const { dataModel } = useCore<ModelTypes>();
   const isMounted = useIsMounted();
-  // console.log('decksRecord', decksRecord);
-  // console.log('accountsRecord', accountsRecord.content);
+  const createDeck = useCreateDeck();
 
   useEffect(() => {
     const initLit = async () => {
@@ -61,53 +53,14 @@ export default function AppHome() {
   // }, [accountData?.connector, signOut]);
 
   const createNewDeck = async (deckName: string) => {
-    if (!decksRecord || !decksRecord.isLoadable || !accountsRecord.content || !accountsRecord.isLoadable) return;
-    if (connection.status !== 'connected') {
-      await connect();
-    }
-
     try {
-      // TODO: clean up / make reusable
-      const userEthAddressRecord = Object.keys(accountsRecord.content).find(record => record.includes('@eip155:1'));
-      if (!userEthAddressRecord) return;
-      const userEthAddress = userEthAddressRecord.replace('@eip155:1', '');
-      const accessControlConditions = [
-        {
-          contractAddress: '',
-          standardContractType: '',
-          chain: 'ethereum',
-          method: '',
-          parameters: [':userAddress'],
-          returnValueTest: {
-            comparator: '=',
-            value: userEthAddress,
-          },
-        },
-      ];
-      const onboardingNotes = createOnboardingNotes();
-      const toEncrypt = JSON.stringify({
-        notes: onboardingNotes,
-        note_tree: null,
-      });
-      const [encryptedZipBase64, encryptedSymmetricKeyBase64] = await encryptWithLit(toEncrypt, accessControlConditions);
-      const doc = await dataModel.createTile('Deck', {
-        encryptedZip: encryptedZipBase64,
-        symmetricKey: encryptedSymmetricKeyBase64,
-        accessControlConditions,
-      });
-
-      if (!doc) {
-        toast.error(`There was an error creating the DECK.`);
-        return;
-      }
-
-      const decks = decksRecord.content?.decks ?? [];
-      await decksRecord.set({ decks: [...decks, { id: doc.id.toUrl(), deck_name: deckName }] });
-
-      router.push(`/app/${doc.id.toString()}`);
+      const redirectLocation = await createDeck(deckName);
+      if (!redirectLocation) return;
+      toast.success(`Successfully created ${deckName}`);
+      router.push(redirectLocation);
     } catch (error) {
-      toast.error(`There was an error creating the DECK.`);
       console.error(error);
+      toast.error('There was an error creating the DECK');
     }
   };
 

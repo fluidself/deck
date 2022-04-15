@@ -3,7 +3,7 @@ import { useRouter } from 'next/router';
 import deleteBacklinks from 'editor/backlinks/deleteBacklinks';
 import { store, useStore } from 'lib/store';
 import { useCurrentDeck } from 'utils/useCurrentDeck';
-import { useDeck } from 'utils/ceramic-hooks';
+import useDeck from 'utils/useDeck';
 
 export default function useDeleteNote() {
   const router = useRouter();

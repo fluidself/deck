@@ -5,7 +5,7 @@ import { v4 as uuidv4 } from 'uuid';
 import { IconBrandDocker, TablerIcon } from '@tabler/icons';
 import { IconFilePlus, IconSearch } from '@tabler/icons';
 import { toast } from 'react-toastify';
-import { useDeck } from 'utils/ceramic-hooks';
+import useDeck from 'utils/useDeck';
 import useNoteSearch from 'utils/useNoteSearch';
 import { caseInsensitiveStringEqual } from 'utils/string';
 

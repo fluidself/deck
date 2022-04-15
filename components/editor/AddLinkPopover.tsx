@@ -5,7 +5,7 @@ import type { TablerIcon } from '@tabler/icons';
 import { IconUnlink, IconLink, IconFilePlus } from '@tabler/icons';
 import { v4 as uuidv4 } from 'uuid';
 import { toast } from 'react-toastify';
-import { useDeck } from 'utils/ceramic-hooks';
+import useDeck from 'utils/useDeck';
 import { useCurrentDeck } from 'utils/useCurrentDeck';
 import { insertExternalLink, insertNoteLink, removeLink } from 'editor/formatting';
 import { isUrl } from 'utils/url';

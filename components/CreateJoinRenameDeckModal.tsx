@@ -2,14 +2,15 @@
 import LitJsSdk from 'lit-js-sdk';
 import { useMemo, useState } from 'react';
 import { IconFolderPlus, IconGitPullRequest, IconPencil } from '@tabler/icons';
-import { useConnection, useViewerRecord, useCore } from '@self.id/framework';
+import { useConnection, useViewerRecord } from '@self.id/framework';
 import { toast } from 'react-toastify';
 import type { ModelTypes } from 'types/ceramic';
 import { AuthSig } from 'types/lit';
 import useHotkeys from 'utils/useHotkeys';
+import useCreateDeck from 'utils/useCreateDeck';
 import Button from 'components/home/Button';
 import { useCurrentDeck } from 'utils/useCurrentDeck';
-import createOnboardingNotes from 'utils/createOnboardingNotes';
+// import createOnboardingNotes from 'utils/createOnboardingNotes';
 
 type Props = {
   type: 'create' | 'join' | 'rename';
@@ -21,8 +22,8 @@ export default function CreateJoinRenameDeckModal(props: Props) {
 
   const { deck } = useCurrentDeck();
   const [connection, connect] = useConnection();
+  const createDeck = useCreateDeck();
   const decksRecord = useViewerRecord<ModelTypes, 'decks'>('decks');
-  const { dataModel } = useCore<ModelTypes>();
   const [inputText, setInputText] = useState<string>('');
   const [processing, setProcessing] = useState<boolean>(false);
 
@@ -38,35 +39,19 @@ export default function CreateJoinRenameDeckModal(props: Props) {
   useHotkeys(hotkeys);
 
   const createNewDeck = async () => {
-    if (!decksRecord || !decksRecord.isLoadable || !inputText) return;
     setProcessing(true);
 
-    if (connection.status !== 'connected') {
-      await connect();
-    }
-
     try {
-      const onboardingNotes = createOnboardingNotes();
-      const doc = await dataModel.createTile('Deck', {
-        notes: onboardingNotes,
-        note_tree: '',
-        access_params: '',
-      });
-
-      if (!doc) {
-        toast.error(`There was an error creating the DECK.`);
-        return;
-      }
-
-      const decks = decksRecord.content?.decks ?? [];
-      await decksRecord.set({ decks: [...decks, { id: doc.id.toUrl(), deck_name: inputText }] });
-
+      const redirectLocation = await createDeck(inputText);
+      if (!redirectLocation) return;
       toast.success(`Successfully created ${inputText}`);
       setProcessing(false);
       closeModal();
-      window.location.assign(`${process.env.BASE_URL}/app/${doc.id.toString()}`);
+      window.location.assign(redirectLocation);
     } catch (error) {
       console.error(error);
+      toast.error('There was an error creating the DECK');
+      setProcessing(false);
     }
   };
 
