@@ -74,21 +74,28 @@ export default function Home() {
   );
 }
 
-export const getServerSideProps = withIronSessionSsr(async function ({ req }) {
-  const cookie = req.headers.cookie;
-  const requestClient = createRequestClient(cookie);
+// TODO: what should this test look like?
+// look up decks for DID
+// look up all workspaces in supabase
+// if match found, forward them there
+// or localstorage ?
+// or save user id as foreign key on workspaces in supabase?
 
-  if (requestClient.viewerID != null) {
-    const response = await requestClient.dataStore.get('decks', requestClient.viewerID);
-    const decks = response?.decks ?? [];
+// export const getServerSideProps = withIronSessionSsr(async function ({ req }) {
+//   const cookie = req.headers.cookie;
+//   const requestClient = createRequestClient(cookie);
 
-    if (decks.length) {
-      const newestDeck = decks[decks.length - 1];
-      return { redirect: { destination: `/app/${newestDeck.id.replace('ceramic://', '')}`, permanent: false } };
-    }
+//   if (requestClient.viewerID != null) {
+//     const response = await requestClient.dataStore.get('decks', requestClient.viewerID);
+//     const decks = response?.decks ?? [];
 
-    return { redirect: { destination: '/app', permanent: false } };
-  }
+//     if (decks.length) {
+//       const newestDeck = decks[decks.length - 1];
+//       return { redirect: { destination: `/app/${newestDeck.id.replace('ceramic://', '')}`, permanent: false } };
+//     }
 
-  return { props: {} };
-}, ironOptions);
+//     return { redirect: { destination: '/app', permanent: false } };
+//   }
+
+//   return { props: {} };
+// }, ironOptions);

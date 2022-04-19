@@ -36,7 +36,7 @@ export default function useCreateDeck() {
         const onboardingNotes = createOnboardingNotes();
         const toEncrypt = JSON.stringify({
           notes: onboardingNotes,
-          note_tree: null,
+          // note_tree: null,
         });
         const [encryptedZipBase64, encryptedSymmetricKeyBase64] = await encryptWithLit(toEncrypt, accessControlConditions);
         const doc = await dataModel.createTile('Deck', {
@@ -49,12 +49,14 @@ export default function useCreateDeck() {
           throw new Error('There was an error creating the DECK');
         }
 
-        const decks = decksRecord.content?.decks ?? [];
+        // const decks = decksRecord.content?.decks ?? [];
+        const decks: any = [];
         await decksRecord.set({ decks: [...decks, { id: doc.id.toUrl(), deck_name: deckName }] });
 
-        const redirectLocation = `${process.env.BASE_URL}/app/${doc.id.toString()}`;
+        // const redirectLocation = `${process.env.BASE_URL}/app/${doc.id.toString()}`;
+        const deckId = doc.id.toString();
 
-        return redirectLocation;
+        return deckId;
       } catch (error) {
         throw error ?? new Error('There was an error creating the DECK');
       }

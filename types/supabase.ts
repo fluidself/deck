@@ -27,3 +27,11 @@ export type AccessParams = {
   resource_id: ResourceId;
   access_control_conditions: AccessControlCondition[];
 };
+
+export type Workspace = {
+  id: string;
+  name: string;
+  master_deck_id: string;
+  decks: string[];
+  note_tree: NoteTreeItem[];
+};

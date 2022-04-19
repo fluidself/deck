@@ -10,6 +10,7 @@ import useHotkeys from 'utils/useHotkeys';
 import useCreateDeck from 'utils/useCreateDeck';
 import Button from 'components/home/Button';
 import { useCurrentDeck } from 'utils/useCurrentDeck';
+import { useCurrentWorkspace } from 'utils/useCurrentWorkspace';
 
 type Props = {
   type: 'create' | 'join' | 'rename';

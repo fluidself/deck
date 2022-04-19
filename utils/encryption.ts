@@ -2,6 +2,7 @@
 import LitJsSdk from 'lit-js-sdk';
 import { toString as uint8ArrayToString } from 'uint8arrays/to-string';
 import type { AuthSig } from 'types/lit';
+import type { Deck } from 'types/ceramic';
 
 export function encodeb64(uintarray: any) {
   const b64 = Buffer.from(uintarray).toString('base64');
@@ -30,6 +31,7 @@ export async function encryptWithLit(
   chain: string = 'ethereum',
 ): Promise<Array<any>> {
   const authSig: AuthSig = await LitJsSdk.checkAndSignAuthMessage({ chain });
+  // TODO: encryptString() faster?
   const { encryptedZip, symmetricKey } = await LitJsSdk.zipAndEncryptString(toEncrypt);
 
   const encryptedSymmetricKey = await window.litNodeClient.saveEncryptionKey({
@@ -60,6 +62,7 @@ export async function decryptWithLit(
     chain,
     authSig,
   });
+  // TODO: decryptString() faster?
   const decryptedFiles = await LitJsSdk.decryptZip(new Blob([encryptedZip]), decryptedSymmetricKey);
   const decryptedString = await decryptedFiles['string.txt'].async('text');
 
@@ -76,4 +79,18 @@ export async function decodeFromB64(encryptedZip: string, encryptedSymmetricKey:
     console.error(error);
     return { success: false };
   }
+}
+
+export async function decryptDeck(deck: any) {
+  const { encryptedZip, symmetricKey, accessControlConditions } = deck;
+  const { success, decodedZip, decodedSymmetricKey } = await decodeFromB64(encryptedZip, symmetricKey);
+  // TODO: fix
+  if (!success || !decodedZip || !decodedSymmetricKey) {
+    return { notes: [], accessControlConditions: null };
+  }
+
+  const decryptedString = await decryptWithLit(decodedZip, decodedSymmetricKey, accessControlConditions);
+  const { notes } = JSON.parse(decryptedString);
+
+  return notes;
 }

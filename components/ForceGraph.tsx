@@ -17,7 +17,7 @@ import {
 import { D3DragEvent, drag } from 'd3-drag';
 import { zoom, zoomIdentity, zoomTransform, ZoomTransform } from 'd3-zoom';
 import { select } from 'd3-selection';
-import { useCurrentDeck } from 'utils/useCurrentDeck';
+import { useCurrentWorkspace } from 'utils/useCurrentWorkspace';
 
 export type NodeDatum = {
   id: string;
@@ -39,7 +39,7 @@ type Props = {
 export default function ForceGraph(props: Props) {
   const { data, className } = props;
 
-  const currentDeck = useCurrentDeck();
+  const { workspace } = useCurrentWorkspace();
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const transform = useRef(zoomIdentity);
   const hoveredNode = useRef<NodeDatum | null>(null);
@@ -251,11 +251,11 @@ export default function ForceGraph(props: Props) {
         const clickedNode = getNode(simulation, context.canvas, x, y);
 
         // Redirect to note when a node is clicked
-        if (clickedNode && currentDeck.deck) {
-          router.push(`/app/${currentDeck.deck.id}/note/${clickedNode.id}`);
+        if (clickedNode && workspace) {
+          router.push(`/app/${workspace.id}/note/${clickedNode.id}`);
         }
       });
-  }, [data, renderCanvas, router, currentDeck]);
+  }, [data, renderCanvas, router, workspace]);
 
   /**
    * Set canvas width and height when its container changes size

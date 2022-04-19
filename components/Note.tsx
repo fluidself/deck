@@ -9,6 +9,7 @@ import { ProvideCurrentNote } from 'utils/useCurrentNote';
 import { caseInsensitiveStringEqual } from 'utils/string';
 import type { NoteItem } from 'types/ceramic';
 import useDeck from 'utils/useDeck';
+import { useCurrentDeck } from 'utils/useCurrentDeck';
 import updateBacklinks from 'editor/backlinks/updateBacklinks';
 import Backlinks from './editor/backlinks/Backlinks';
 import NoteHeader from './editor/NoteHeader';
@@ -25,10 +26,11 @@ type Props = {
 function Note(props: Props) {
   const { noteId, highlightedPath, className } = props;
   const router = useRouter();
-  const {
-    query: { deckId },
-  } = router;
-  const deck = useDeck(deckId as string);
+  // const {
+  //   query: { deckId },
+  // } = router;
+  const currentDeck = useCurrentDeck();
+  const deck = useDeck(currentDeck.deck.id);
   const updateNote = useStore(state => state.updateNote);
 
   const [syncState, setSyncState] = useState({

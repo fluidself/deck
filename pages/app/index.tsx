@@ -20,6 +20,7 @@ import HomeHeader from 'components/home/HomeHeader';
 import RequestDeckAccess from 'components/home/RequestDeckAccess';
 import ProvideDeckName from 'components/home/ProvideDeckName';
 import Button from 'components/home/Button';
+import insertWorkspace from 'lib/api/insertWorkspace';
 
 export default function AppHome() {
   const router = useRouter();
@@ -54,13 +55,24 @@ export default function AppHome() {
 
   const createNewDeck = async (deckName: string) => {
     try {
-      const redirectLocation = await createDeck(deckName);
-      if (!redirectLocation) return;
-      toast.success(`Successfully created ${deckName}`);
-      router.push(redirectLocation);
+      const deckId = await createDeck(deckName);
+      if (!deckId) {
+        toast.error('There was an error creating your DECK');
+        return;
+      }
+
+      const workspace = await insertWorkspace({ name: deckName, master_deck: deckId, decks: [deckId] });
+      if (!workspace) {
+        toast.error('There was an error creating your DECK');
+        return;
+      }
+
+      toast.success(`Successfully created ${workspace.name}`);
+      setCreatingDeck(false);
+      router.push(`/app/${workspace.id}`);
     } catch (error) {
       console.error(error);
-      toast.error('There was an error creating the DECK');
+      toast.error('There was an error creating your DECK');
     }
   };
 
@@ -160,13 +172,13 @@ export const getServerSideProps = withIronSessionSsr(async function ({ req }) {
   const prefetch = [];
 
   if (requestClient.viewerID != null) {
-    const response = await requestClient.dataStore.get('decks', requestClient.viewerID);
-    const decks = response?.decks ?? [];
+    // const response = await requestClient.dataStore.get('decks', requestClient.viewerID);
+    // const decks = response?.decks ?? [];
 
-    if (decks.length) {
-      const newestDeck = decks[decks.length - 1];
-      return { redirect: { destination: `/app/${newestDeck.id.replace('ceramic://', '')}`, permanent: false } };
-    }
+    // if (decks.length) {
+    //   const newestDeck = decks[decks.length - 1];
+    //   return { redirect: { destination: `/app/${newestDeck.id.replace('ceramic://', '')}`, permanent: false } };
+    // }
 
     // prefetch.push(requestClient.prefetch('basicProfile', requestClient.viewerID));
     prefetch.push(requestClient.prefetch('cryptoAccounts', requestClient.viewerID));

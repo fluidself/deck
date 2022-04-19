@@ -6,19 +6,20 @@ import { useRouter } from 'next/router';
 import Head from 'next/head';
 import classNames from 'classnames';
 import colors from 'tailwindcss/colors';
-import { useViewerID } from '@self.id/framework';
+import { useViewerID, useCore, useViewerRecord } from '@self.id/framework';
 // import { useAccount } from 'wagmi';
 import { useStore, store, NoteTreeItem, getNoteTreeItem, Notes, SidebarTab } from 'lib/store';
-// import supabase from 'lib/supabase';
+import supabase from 'lib/supabase';
 // import { Note, Deck } from 'types/supabase';
 import type { Deck, ModelTypes, NoteItem } from 'types/ceramic';
+import type { Workspace } from 'types/supabase';
 import { ProvideCurrentDeck } from 'utils/useCurrentDeck';
-import useDeck from 'utils/useDeck';
+import { ProvideCurrentWorkspace } from 'utils/useCurrentWorkspace';
 import useHotkeys from 'utils/useHotkeys';
 // import { useAuth } from 'utils/useAuth';
 import { isMobile } from 'utils/device';
 import useIsMounted from 'utils/useIsMounted';
-import { decodeFromB64, decryptWithLit } from 'utils/encryption';
+import { decryptDeck } from 'utils/encryption';
 import Sidebar from './sidebar/Sidebar';
 import FindOrCreateModal from './FindOrCreateModal';
 import PageLoading from './PageLoading';
@@ -32,14 +33,17 @@ type Props = {
 export default function AppLayout(props: Props) {
   const { children, className = '' } = props;
   const router = useRouter();
+  // TODO: [deckId] => [workspaceId]
   const {
-    query: { deckId },
+    query: { deckId: workspaceId },
   } = router;
   const viewerID = useViewerID();
-  const deck = useDeck(deckId as string);
+  const decksRecord = useViewerRecord<ModelTypes, 'decks'>('decks');
   const isMounted = useIsMounted();
+  const { tileLoader } = useCore();
 
   const [isPageLoaded, setIsPageLoaded] = useState(false);
+  const [deckId, setDeckId] = useState<string | null>(null);
 
   // useEffect(() => {
   //   const onDisconnect = () => signOut();
@@ -62,7 +66,7 @@ export default function AppLayout(props: Props) {
 
   const setNotes = useStore(state => state.setNotes);
   const setNoteTree = useStore(state => state.setNoteTree);
-  const setDeckId = useStore(state => state.setDeckId);
+  const setDeckIdStore = useStore(state => state.setDeckId);
 
   const initLit = async () => {
     const client = new LitJsSdk.LitNodeClient({ alertWhenUnauthorized: false, debug: false });
@@ -75,30 +79,43 @@ export default function AppLayout(props: Props) {
       await initLit();
     }
 
-    if (!deckId || typeof deckId !== 'string' || !deck.content) {
+    if (!workspaceId || typeof workspaceId !== 'string') {
       return;
     }
 
-    setDeckId(deckId);
+    const { data: workspace } = await supabase
+      .from<Workspace>('workspaces')
+      .select('master_deck, decks, note_tree')
+      .eq('id', workspaceId)
+      .single();
+    if (!workspace) return;
 
-    const { encryptedZip, symmetricKey, accessControlConditions } = deck.content;
-    const { success, decodedZip, decodedSymmetricKey } = await decodeFromB64(encryptedZip, symmetricKey);
-    if (!success || !decodedZip || !decodedSymmetricKey) return;
+    const currentUserDeck = decksRecord.content?.decks.find(deck => workspace.decks.includes(deck.id.replace('ceramic://', '')));
+    if (currentUserDeck) {
+      // const deckIdNormalized = currentUserDeck.id.replace('ceramic://', '')
+      // setDeckId(deckIdNormalized);
+      // setDeckIdStore(deckIdNormalized);
+      setDeckId(currentUserDeck.id.replace('ceramic://', ''));
+    }
 
-    const decryptedString = await decryptWithLit(decodedZip, decodedSymmetricKey, accessControlConditions);
-    const { notes, note_tree }: { notes: NoteItem[]; note_tree: NoteTreeItem[] | null } = JSON.parse(decryptedString);
-    // console.log(notes);
+    const deckTileDocuments = await tileLoader.loadMany(workspace?.decks);
+    let notes: NoteItem[] = [];
 
-    // const notes: NoteItem[] = deck.content?.notes ?? [];
+    for (const deckTileDocument of deckTileDocuments) {
+      if (deckTileDocument instanceof Error) return;
+
+      const deckNotes = await decryptDeck(deckTileDocument.content);
+      notes = [...notes, ...deckNotes];
+    }
 
     // Redirect to most recent note or first note in database
     if (router.pathname.match(/^\/app\/[^/]+$/i)) {
       const openNoteIds = store.getState().openNoteIds;
       if (openNoteIds.length > 0 && notes && notes.findIndex(note => note.id === openNoteIds[0]) > -1) {
-        router.replace(`/app/${deckId}/note/${openNoteIds[0]}`);
+        router.replace(`/app/${workspaceId}/note/${openNoteIds[0]}`);
         return;
       } else if (notes && notes.length > 0) {
-        router.replace(`/app/${deckId}/note/${notes[0].id}`);
+        router.replace(`/app/${workspaceId}/note/${notes[0].id}`);
         return;
       }
     }
@@ -116,8 +133,8 @@ export default function AppLayout(props: Props) {
     setNotes(notesAsObj);
 
     // Set note tree
-    if (note_tree) {
-      const noteTree: NoteTreeItem[] = [...note_tree];
+    if (workspace.note_tree) {
+      const noteTree: NoteTreeItem[] = [...workspace.note_tree];
       // This is a sanity check for removing notes in the noteTree that do not exist
       removeNonexistentNotes(noteTree, notesAsObj);
       // If there are notes that are not in the note tree, add them
@@ -135,19 +152,16 @@ export default function AppLayout(props: Props) {
     }
 
     setIsPageLoaded(true);
-  }, [isMounted, deckId, deck, router, setNotes, setNoteTree, setDeckId]);
+  }, [isMounted, workspaceId, decksRecord, router, setNotes, setNoteTree, setDeckIdStore]);
 
   useEffect(() => {
-    // TODO: finetune?
-    // console.log('AppLayout useEffect', isPageLoaded, connection, deck, decksRecord, decksRecordPublic, decks);
     if (!viewerID?.id) {
       // Redirect to root page if there is no user logged in
       router.replace('/');
-    } else if (!isPageLoaded && deck && !deck.isLoading) {
-      // Initialize data if there is a user and the data has not been initialized yet
+    } else if (!isPageLoaded && decksRecord && !decksRecord.isLoading) {
       initData();
     }
-  }, [router, viewerID, deck, isPageLoaded, initData]);
+  }, [router, viewerID, isPageLoaded, decksRecord, initData]);
 
   const [isFindOrCreateModalOpen, setIsFindOrCreateModalOpen] = useState(false);
   // const [isSettingsOpen, setIsSettingsOpen] = useState(false);
@@ -192,24 +206,20 @@ export default function AppLayout(props: Props) {
       },
       {
         hotkey: 'mod+shift+g',
-        callback: () => router.push(`/app/${deckId}/graph`),
+        callback: () => router.push(`/app/${workspaceId}/graph`),
       },
       {
         hotkey: 'mod+\\',
         callback: () => setIsSidebarOpen(isOpen => !isOpen),
       },
     ],
-    [setIsFindOrCreateModalOpen, setSidebarTab, setIsSidebarOpen, router, deckId],
+    [setIsFindOrCreateModalOpen, setSidebarTab, setIsSidebarOpen, router, workspaceId],
   );
   useHotkeys(hotkeys);
 
   const appContainerClassName = classNames('h-screen font-display text-base', { dark: darkMode }, className);
 
-  if (!isPageLoaded) {
-    return <PageLoading />;
-  }
-
-  if (!deckId || typeof deckId !== 'string') {
+  if (!isPageLoaded || !workspaceId || typeof workspaceId !== 'string' || !deckId) {
     return <PageLoading />;
   }
 
@@ -218,18 +228,20 @@ export default function AppLayout(props: Props) {
       <Head>
         <meta name="theme-color" content={darkMode ? colors.neutral[900] : colors.white} />
       </Head>
-      <ProvideCurrentDeck deckId={deckId}>
-        <div id="app-container" className={appContainerClassName}>
-          <div className="flex w-full h-full dark:bg-gray-900">
-            <Sidebar setIsFindOrCreateModalOpen={setIsFindOrCreateModalOpen} />
-            <div className="relative flex flex-col flex-1 overflow-y-hidden">
-              <OfflineBanner />
-              {children}
+      <ProvideCurrentWorkspace workspaceId={workspaceId}>
+        <ProvideCurrentDeck deckId={deckId}>
+          <div id="app-container" className={appContainerClassName}>
+            <div className="flex w-full h-full dark:bg-gray-900">
+              <Sidebar setIsFindOrCreateModalOpen={setIsFindOrCreateModalOpen} />
+              <div className="relative flex flex-col flex-1 overflow-y-hidden">
+                <OfflineBanner />
+                {children}
+              </div>
+              {isFindOrCreateModalOpen ? <FindOrCreateModal setIsOpen={setIsFindOrCreateModalOpen} /> : null}
             </div>
-            {isFindOrCreateModalOpen ? <FindOrCreateModal setIsOpen={setIsFindOrCreateModalOpen} /> : null}
           </div>
-        </div>
-      </ProvideCurrentDeck>
+        </ProvideCurrentDeck>
+      </ProvideCurrentWorkspace>
     </>
   );
 }
