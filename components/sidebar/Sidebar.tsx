@@ -6,14 +6,18 @@ import Link from 'next/link';
 import { useRouter } from 'next/router';
 import { IconAffiliate, IconSearch } from '@tabler/icons';
 import { useTransition, animated } from '@react-spring/web';
+import { useViewerRecord } from '@self.id/framework';
 import { toast } from 'react-toastify';
 import Tooltip from 'components/Tooltip';
 import { isMobile } from 'utils/device';
 import { useCurrentDeck } from 'utils/useCurrentDeck';
+import { useCurrentWorkspace } from 'utils/useCurrentWorkspace';
+import useDeck from 'utils/useDeck';
 import { useStore } from 'lib/store';
 import supabase from 'lib/supabase';
 import { SPRING_CONFIG } from 'constants/spring';
-import { AccessControlCondition, AuthSig, ResourceId } from 'types/lit';
+import { AccessControlCondition, AuthSig, BooleanCondition } from 'types/lit';
+import type { ModelTypes } from 'types/ceramic';
 import { Deck, AccessParams } from 'types/supabase';
 import { ShareModal } from 'components/ShareModal';
 import CreateJoinRenameDeckModal from 'components/CreateJoinRenameDeckModal';
@@ -29,8 +33,10 @@ type Props = {
 function Sidebar(props: Props) {
   const { setIsFindOrCreateModalOpen, className } = props;
 
+  const accountsRecord = useViewerRecord<ModelTypes, 'cryptoAccounts'>('cryptoAccounts');
+  const { workspace } = useCurrentWorkspace();
   const currentDeck = useCurrentDeck();
-  // const deck = useDeck(currentDeck.deck?.id);
+  const deck = useDeck(currentDeck.deck?.id);
   const isSidebarOpen = useStore(state => state.isSidebarOpen);
   const setIsSidebarOpen = useStore(state => state.setIsSidebarOpen);
   const hideSidebarOnMobile = useCallback(() => {
@@ -42,45 +48,42 @@ function Sidebar(props: Props) {
   const [processingAccess, setProcessingAccess] = useState<boolean>(false);
   const [createJoinRenameModal, setCreateJoinRenameModal] = useState<any>({ open: false, type: '' });
 
-  // const provisionAccess = async (accessControlConditions: AccessControlCondition[]) => {
-  //   if (!deck || !accessControlConditions) return;
+  const provisionAccess = async (acc: AccessControlCondition[]) => {
+    if (!deck || !acc || !accountsRecord.content) return;
 
-  //   try {
-  //     const chain = accessControlConditions[0].chain;
-  //     const authSig: AuthSig = await LitJsSdk.checkAndSignAuthMessage({ chain });
+    try {
+      const userEthAddressRecord = Object.keys(accountsRecord.content).find(record => record.includes('@eip155:1'));
+      const userEthAddress = userEthAddressRecord?.replace('@eip155:1', '');
+      if (!userEthAddress) return;
 
-  //     if (!authSig) {
-  //       toast.error('Provisioning access failed.');
-  //       return false;
-  //     }
+      const accessControlConditions: (AccessControlCondition | BooleanCondition)[] = [
+        {
+          contractAddress: '',
+          standardContractType: '',
+          chain: 'ethereum',
+          method: '',
+          parameters: [':userAddress'],
+          returnValueTest: {
+            comparator: '=',
+            value: userEthAddress,
+          },
+        },
+        { operator: 'or' },
+        ...acc,
+      ];
 
-  //     const resourceId: ResourceId = {
-  //       baseUrl: process.env.BASE_URL ?? '',
-  //       path: `/app/${deck?.id}`,
-  //       orgId: '',
-  //       role: '',
-  //       extraData: '',
-  //     };
+      const success = await deck.updateAccessControlConditions(accessControlConditions);
 
-  //     await window.litNodeClient.saveSigningCondition({
-  //       accessControlConditions,
-  //       chain,
-  //       authSig,
-  //       resourceId,
-  //       permanent: false,
-  //     });
-
-  //     const accessParamsToSave: AccessParams = { resource_id: resourceId, access_control_conditions: accessControlConditions };
-  //     await supabase.from<Deck>('decks').update({ access_params: accessParamsToSave }).eq('id', deck.id);
-
-  //     toast.success('Access to your DECK was configured');
-  //     return true;
-  //   } catch (e: any) {
-  //     console.error(e);
-  //     toast.error('Provisioning access failed.');
-  //     return false;
-  //   }
-  // };
+      if (success) {
+        toast.success('Access to your DECK was configured');
+        return true;
+      }
+    } catch (e: any) {
+      console.error(e);
+      toast.error('Provisioning access failed.');
+      return false;
+    }
+  };
 
   const transition = useTransition<
     boolean,
@@ -161,13 +164,13 @@ function Sidebar(props: Props) {
           {isShareModalOpen && (
             <ShareModal
               onClose={() => setIsShareModalOpen(false)}
-              deckToShare={currentDeck.deck?.id}
+              deckToShare={workspace?.id}
               processingAccess={processingAccess}
               onAccessControlConditionsSelected={async (acc: AccessControlCondition[]) => {
                 setProcessingAccess(true);
-                // const success = await provisionAccess(acc);
-                // if (success) return true;
-                // setProcessingAccess(false);
+                const success = await provisionAccess(acc);
+                if (success) return true;
+                setProcessingAccess(false);
               }}
               showStep={'ableToAccess'}
             />

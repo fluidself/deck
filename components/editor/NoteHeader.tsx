@@ -15,15 +15,16 @@ import { AvatarPlaceholder, useViewerID, useViewerRecord } from '@self.id/framew
 import { usePopper } from 'react-popper';
 import { saveAs } from 'file-saver';
 import JSZip from 'jszip';
+import useSWR from 'swr';
 import { useRouter } from 'next/router';
 import { toast } from 'react-toastify';
 import Portal from 'components/Portal';
 import { useCurrentNote } from 'utils/useCurrentNote';
 import { getProfileInfo } from 'utils/getProfileInfo';
 import { store, useStore } from 'lib/store';
+import selectWorkspaces from 'lib/api/selectWorkspaces';
 import serialize from 'editor/serialization/serialize';
 import { Note } from 'types/supabase';
-import type { ModelTypes } from 'types/ceramic';
 import useImport from 'utils/useImport';
 import { queryParamToArray } from 'utils/url';
 import Tooltip from 'components/Tooltip';
@@ -40,11 +41,13 @@ export default function NoteHeader() {
   const currentNote = useCurrentNote();
   const onImport = useImport();
   const { onDeleteClick } = useDeleteNote();
-  const [deckOptions, setDeckOptions] = useState<any>(null);
-  const [selectedDeck, setSelectedDeck] = useState<any>(null);
   const viewerID = useViewerID();
+  const { data: workspaces } = useSWR(viewerID?.id ? 'workspaces' : null, () => selectWorkspaces(viewerID?.id), {
+    revalidateOnFocus: false,
+  });
   const profileRecord = useViewerRecord('basicProfile');
-  const decksRecord = useViewerRecord<ModelTypes, 'decks'>('decks');
+  const [workspaceOptions, setWorkspaceOptions] = useState<any>(null);
+  const [selectedWorkspace, setSelectedWorkspace] = useState<any>(null);
 
   const router = useRouter();
   const {
@@ -52,17 +55,16 @@ export default function NoteHeader() {
   } = router;
 
   useEffect(() => {
-    if (!decksRecord || !decksRecord.isLoadable || decksRecord.isLoading) return;
+    if (!workspaces || !workspaces.length) return;
 
-    const decks = decksRecord.content?.decks.map(deck => ({ ...deck, id: deck.id.replace('ceramic://', '') })) ?? [];
-    const decksToOptions = decks?.map(deck => ({
-      label: `${deck.deck_name} (${deck.id})`,
-      id: deck.id,
-      value: deck.id,
+    const workspacesToOptions = workspaces?.map(workspace => ({
+      label: `${workspace.name} (${workspace.id})`,
+      id: workspace.id,
+      value: workspace.id,
     }));
-    setDeckOptions(decksToOptions);
-    setSelectedDeck(decksToOptions?.filter(deckOption => deckOption.id === deckId)[0]);
-  }, [decksRecord.isLoading, deckId]);
+    setWorkspaceOptions(workspacesToOptions);
+    setSelectedWorkspace(workspacesToOptions?.filter(workspaceOption => workspaceOption.id === deckId)[0]);
+  }, [workspaces, deckId]);
 
   const isSidebarButtonVisible = useStore(state => !state.isSidebarOpen && state.openNoteIds?.[0] === currentNote.id);
   const isCloseButtonVisible = useStore(state => state.openNoteIds.length > 1);
@@ -161,10 +163,10 @@ export default function NoteHeader() {
                 <Select
                   className="react-select-container-header"
                   classNamePrefix="react-select-header"
-                  options={deckOptions}
-                  value={selectedDeck}
+                  options={workspaceOptions}
+                  value={selectedWorkspace}
                   onChange={value => {
-                    setSelectedDeck(value);
+                    setSelectedWorkspace(value);
                     window.location.assign(`${process.env.BASE_URL}/app/${value.id}`);
                   }}
                 />

@@ -2,15 +2,18 @@
 import LitJsSdk from 'lit-js-sdk';
 import { useMemo, useState } from 'react';
 import { IconFolderPlus, IconGitPullRequest, IconPencil } from '@tabler/icons';
-import { useConnection, useViewerRecord } from '@self.id/framework';
+import { useConnection, useViewerID, useViewerRecord } from '@self.id/framework';
 import { toast } from 'react-toastify';
 import type { ModelTypes } from 'types/ceramic';
+import { Workspace } from 'types/supabase';
 import { AuthSig } from 'types/lit';
+import insertWorkspace from 'lib/api/insertWorkspace';
+import supabase from 'lib/supabase';
 import useHotkeys from 'utils/useHotkeys';
 import useCreateDeck from 'utils/useCreateDeck';
-import Button from 'components/home/Button';
 import { useCurrentDeck } from 'utils/useCurrentDeck';
 import { useCurrentWorkspace } from 'utils/useCurrentWorkspace';
+import Button from 'components/home/Button';
 
 type Props = {
   type: 'create' | 'join' | 'rename';
@@ -20,9 +23,11 @@ type Props = {
 export default function CreateJoinRenameDeckModal(props: Props) {
   const { type, closeModal } = props;
 
-  const currentDeck = useCurrentDeck();
+  const { deck } = useCurrentDeck();
+  const { workspace } = useCurrentWorkspace();
   const [connection, connect] = useConnection();
   const createDeck = useCreateDeck();
+  const viewerID = useViewerID();
   const decksRecord = useViewerRecord<ModelTypes, 'decks'>('decks');
   const [inputText, setInputText] = useState<string>('');
   const [processing, setProcessing] = useState<boolean>(false);
@@ -39,24 +44,35 @@ export default function CreateJoinRenameDeckModal(props: Props) {
   useHotkeys(hotkeys);
 
   const createNewDeck = async () => {
+    if (!viewerID?.id) return;
     setProcessing(true);
 
     try {
-      const redirectLocation = await createDeck(inputText);
-      if (!redirectLocation) return;
-      toast.success(`Successfully created ${inputText}`);
+      const deckId = await createDeck(inputText);
+      if (!deckId) {
+        toast.error('There was an error creating your DECK');
+        return;
+      }
+
+      const workspace = await insertWorkspace({ name: inputText, master_deck: deckId, master_did: viewerID.id, decks: [deckId] });
+      if (!workspace) {
+        toast.error('There was an error creating your DECK');
+        return;
+      }
+
+      toast.success(`Successfully created ${workspace.name}`);
       setProcessing(false);
       closeModal();
-      window.location.assign(redirectLocation);
+      window.location.assign(`/app/${workspace.id}`);
     } catch (error) {
       console.error(error);
-      toast.error('There was an error creating the DECK');
+      toast.error('There was an error creating your DECK');
       setProcessing(false);
     }
   };
 
   const renameDeck = async () => {
-    if (!currentDeck.deck || !decksRecord || !decksRecord.isLoadable || !inputText) return;
+    if (!deck || !workspace || !decksRecord || !decksRecord.isLoadable || !inputText) return;
     setProcessing(true);
 
     if (connection.status !== 'connected') {
@@ -65,13 +81,24 @@ export default function CreateJoinRenameDeckModal(props: Props) {
 
     try {
       const decks = decksRecord.content?.decks ?? [];
-      const otherDecks = decks.filter(d => d.id !== `ceramic://${currentDeck.deck.id}`);
-      await decksRecord.set({ decks: [...otherDecks, { id: `ceramic://${currentDeck.deck.id}`, deck_name: inputText }] });
+      const otherDecks = decks.filter(d => d.id !== `ceramic://${deck.id}`);
+      await decksRecord.set({ decks: [...otherDecks, { id: `ceramic://${deck.id}`, deck_name: inputText }] });
+
+      const { data: updatedWorkspace, error } = await supabase
+        .from<Workspace>('workspaces')
+        .update({ name: inputText })
+        .eq('id', workspace.id)
+        .single();
+
+      if (!updatedWorkspace || error) {
+        toast.error('There was an error updating the DECK');
+        return;
+      }
 
       toast.success(`Successfully renamed ${inputText}`);
       setProcessing(false);
       closeModal();
-      window.location.assign(`${process.env.BASE_URL}/app/${currentDeck.deck.id}`);
+      window.location.assign(`${process.env.BASE_URL}/app/${updatedWorkspace.id}`);
     } catch (error) {
       console.error(error);
       toast.error('There was an error updating the DECK');

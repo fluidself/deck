@@ -4,9 +4,13 @@ import { PublicID, useConnection, useCore, usePublicRecord, useViewerID, useView
 // import type { PublicRecord } from '@self.id/framework';
 import { useCallback } from 'react';
 import { useMutation, useQuery, useQueryClient } from 'react-query';
-import { NoteTreeItem, store, useStore } from 'lib/store';
-import type { ModelTypes, Deck, Decks, NoteItem } from 'types/ceramic';
-import { decodeFromB64, encryptWithLit, decryptWithLit } from 'utils/encryption';
+import supabase from 'lib/supabase';
+import { store, useStore } from 'lib/store';
+import type { ModelTypes, Deck, NoteItem } from 'types/ceramic';
+import { AccessControlCondition, BooleanCondition } from 'types/lit';
+import { Workspace } from 'types/supabase';
+import { decryptDeck, encryptWithLit } from 'utils/encryption';
+import { useCurrentWorkspace } from 'utils/useCurrentWorkspace';
 
 type TileDoc<ContentType> = {
   isLoading: boolean;
@@ -72,6 +76,7 @@ function useTileDoc<ContentType>(id: string): TileDoc<ContentType> {
 export default function useDeck(id: string) {
   const [connection, connect] = useConnection<ModelTypes>();
   const deckDoc = useTileDoc<Deck>(id);
+  const { workspace } = useCurrentWorkspace();
 
   const upsertNoteStore = useStore(state => state.upsertNote);
   const updateNoteStore = useStore(state => state.updateNote);
@@ -80,7 +85,6 @@ export default function useDeck(id: string) {
   const content = deckDoc.content;
   const isEditable = deckDoc.isController;
 
-  // TODO: DRY up
   // TODO: handle errors / loading state?
 
   const addNote = useCallback(
@@ -89,15 +93,12 @@ export default function useDeck(id: string) {
       if (!deckDoc.content || !newNote) return false;
 
       try {
-        const { notes, note_tree, accessControlConditions } = await decryptDeck(deckDoc.content);
+        const { notes, accessControlConditions } = await decryptDeck(deckDoc.content);
         if (!notes || !accessControlConditions) {
           return false;
         }
 
-        const toEncrypt = JSON.stringify({
-          notes: [...notes, newNote],
-          note_tree,
-        });
+        const toEncrypt = JSON.stringify({ notes: [...notes, newNote] });
         const [encryptedZipBase64, encryptedSymmetricKeyBase64] = await encryptWithLit(toEncrypt, accessControlConditions);
 
         await deckDoc.update({
@@ -119,10 +120,10 @@ export default function useDeck(id: string) {
   const updateNotes = useCallback(
     async (noteUpdates, noteToDelete = null) => {
       if (connection.status !== 'connected') await connect();
-      if (!deckDoc.content) return false;
+      if (!deckDoc.content || !workspace) return false;
 
       try {
-        const { notes, note_tree, accessControlConditions } = await decryptDeck(deckDoc.content);
+        const { notes, accessControlConditions } = await decryptDeck(deckDoc.content);
         if (!notes || !accessControlConditions) {
           return false;
         }
@@ -131,10 +132,7 @@ export default function useDeck(id: string) {
         let otherNotes = noteToDelete ? notes.filter(note => note.id !== noteToDelete) : notes;
         otherNotes = otherNotes.filter(note => !noteUpdateIds.includes(note.id));
 
-        const toEncrypt = JSON.stringify({
-          notes: [...otherNotes, ...noteUpdates],
-          note_tree: noteToDelete ? store.getState().noteTree : note_tree,
-        });
+        const toEncrypt = JSON.stringify({ notes: [...otherNotes, ...noteUpdates] });
         const [encryptedZipBase64, encryptedSymmetricKeyBase64] = await encryptWithLit(toEncrypt, accessControlConditions);
 
         await deckDoc.update({
@@ -153,7 +151,37 @@ export default function useDeck(id: string) {
 
         if (noteToDelete) {
           deleteNoteStore(noteToDelete);
+          await supabase.from<Workspace>('workspaces').update({ note_tree: store.getState().noteTree }).eq('id', workspace.id);
         }
+
+        return true;
+      } catch (error) {
+        console.error(error);
+        return false;
+      }
+    },
+    [deckDoc, workspace, connection, connect],
+  );
+
+  const updateAccessControlConditions = useCallback(
+    async (accessControlConditions: (AccessControlCondition | BooleanCondition)[]) => {
+      if (connection.status !== 'connected') await connect();
+      if (!deckDoc.content) return false;
+
+      try {
+        const { notes } = await decryptDeck(deckDoc.content);
+        if (!notes) {
+          return false;
+        }
+
+        const toEncrypt = JSON.stringify({ notes });
+        const [encryptedZipBase64, encryptedSymmetricKeyBase64] = await encryptWithLit(toEncrypt, accessControlConditions);
+
+        await deckDoc.update({
+          encryptedZip: encryptedZipBase64,
+          symmetricKey: encryptedSymmetricKeyBase64,
+          accessControlConditions,
+        });
 
         return true;
       } catch (error) {
@@ -163,35 +191,6 @@ export default function useDeck(id: string) {
     },
     [deckDoc, connection, connect],
   );
-
-  const updateNoteTree = useCallback(async () => {
-    if (connection.status !== 'connected') await connect();
-    if (!deckDoc.content) return false;
-
-    try {
-      const { notes, accessControlConditions } = await decryptDeck(deckDoc.content);
-      if (!notes || !accessControlConditions) {
-        return false;
-      }
-
-      const toEncrypt = JSON.stringify({
-        notes,
-        note_tree: store.getState().noteTree,
-      });
-      const [encryptedZipBase64, encryptedSymmetricKeyBase64] = await encryptWithLit(toEncrypt, accessControlConditions);
-
-      await deckDoc.update({
-        encryptedZip: encryptedZipBase64,
-        symmetricKey: encryptedSymmetricKeyBase64,
-        accessControlConditions,
-      });
-
-      return true;
-    } catch (error) {
-      console.error(error);
-      return false;
-    }
-  }, [deckDoc, connection, connect]);
 
   return {
     isEditable,
@@ -203,20 +202,6 @@ export default function useDeck(id: string) {
     error: deckDoc.error,
     addNote,
     updateNotes,
-    updateNoteTree,
+    updateAccessControlConditions,
   };
 }
-
-const decryptDeck = async (deck: Deck) => {
-  const { encryptedZip, symmetricKey, accessControlConditions } = deck;
-  const { success, decodedZip, decodedSymmetricKey } = await decodeFromB64(encryptedZip, symmetricKey);
-  // TODO: fix
-  if (!success || !decodedZip || !decodedSymmetricKey) {
-    return { notes: [], note_tree: null, accessControlConditions: null };
-  }
-
-  const decryptedString = await decryptWithLit(decodedZip, decodedSymmetricKey, accessControlConditions);
-  const { notes, note_tree }: { notes: NoteItem[]; note_tree: NoteTreeItem[] | null } = JSON.parse(decryptedString);
-
-  return { notes, note_tree, accessControlConditions };
-};

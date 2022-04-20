@@ -101,12 +101,16 @@ export default function AppLayout(props: Props) {
     const deckTileDocuments = await tileLoader.loadMany(workspace?.decks);
     let notes: NoteItem[] = [];
 
+    // TODO: DRY up and reuse in verifyAccess?
     for (const deckTileDocument of deckTileDocuments) {
       if (deckTileDocument instanceof Error) return;
-
-      const deckNotes = await decryptDeck(deckTileDocument.content);
+      const { notes: deckNotes } = await decryptDeck(deckTileDocument.content);
       notes = [...notes, ...deckNotes];
     }
+
+    // TODO: simply removing duplicate ids at this point.
+    // should it take into account updated_at too?
+    notes = notes.filter((value, index, self) => index === self.findIndex(t => t.id === value.id));
 
     // Redirect to most recent note or first note in database
     if (router.pathname.match(/^\/app\/[^/]+$/i)) {

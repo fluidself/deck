@@ -2,7 +2,7 @@
 import LitJsSdk from 'lit-js-sdk';
 import { toString as uint8ArrayToString } from 'uint8arrays/to-string';
 import type { AuthSig } from 'types/lit';
-import type { Deck } from 'types/ceramic';
+import type { Deck, NoteItem } from 'types/ceramic';
 
 export function encodeb64(uintarray: any) {
   const b64 = Buffer.from(uintarray).toString('base64');
@@ -90,7 +90,7 @@ export async function decryptDeck(deck: any) {
   }
 
   const decryptedString = await decryptWithLit(decodedZip, decodedSymmetricKey, accessControlConditions);
-  const { notes } = JSON.parse(decryptedString);
+  const { notes }: { notes: NoteItem[] } = JSON.parse(decryptedString);
 
-  return notes;
+  return { notes, accessControlConditions };
 }

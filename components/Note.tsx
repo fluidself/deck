@@ -15,7 +15,7 @@ import Backlinks from './editor/backlinks/Backlinks';
 import NoteHeader from './editor/NoteHeader';
 import ErrorBoundary from './ErrorBoundary';
 
-const SYNC_DEBOUNCE_MS = 15000;
+const SYNC_DEBOUNCE_MS = 10000;
 
 type Props = {
   noteId: string;
@@ -26,9 +26,6 @@ type Props = {
 function Note(props: Props) {
   const { noteId, highlightedPath, className } = props;
   const router = useRouter();
-  // const {
-  //   query: { deckId },
-  // } = router;
   const currentDeck = useCurrentDeck();
   const deck = useDeck(currentDeck.deck.id);
   const updateNote = useStore(state => state.updateNote);

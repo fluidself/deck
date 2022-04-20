@@ -11,8 +11,9 @@ export default function useCreateDeck() {
   const { dataModel } = useCore<ModelTypes>();
 
   const create = useCallback(
-    async (deckName: string) => {
-      if (!decksRecord.content || !accountsRecord.content) return;
+    async (deckName, notes = null, acc = null) => {
+      if (!decksRecord.set || !accountsRecord.content) return;
+
       if (connection.status !== 'connected') {
         await connect();
       }
@@ -20,24 +21,25 @@ export default function useCreateDeck() {
       try {
         const userEthAddressRecord = Object.keys(accountsRecord.content).find(record => record.includes('@eip155:1'));
         const userEthAddress = userEthAddressRecord?.replace('@eip155:1', '');
-        const accessControlConditions = [
-          {
-            contractAddress: '',
-            standardContractType: '',
-            chain: 'ethereum',
-            method: '',
-            parameters: [':userAddress'],
-            returnValueTest: {
-              comparator: '=',
-              value: userEthAddress,
-            },
-          },
-        ];
-        const onboardingNotes = createOnboardingNotes();
-        const toEncrypt = JSON.stringify({
-          notes: onboardingNotes,
-          // note_tree: null,
-        });
+        const accessControlConditions = acc
+          ? acc
+          : [
+              {
+                contractAddress: '',
+                standardContractType: '',
+                chain: 'ethereum',
+                method: '',
+                parameters: [':userAddress'],
+                returnValueTest: {
+                  comparator: '=',
+                  value: userEthAddress,
+                },
+              },
+            ];
+        // const onboardingNotes = createOnboardingNotes();
+        // const toEncrypt = JSON.stringify({ notes: onboardingNotes });
+        const notesToEncrypt = notes ? notes : createOnboardingNotes();
+        const toEncrypt = JSON.stringify({ notes: notesToEncrypt });
         const [encryptedZipBase64, encryptedSymmetricKeyBase64] = await encryptWithLit(toEncrypt, accessControlConditions);
         const doc = await dataModel.createTile('Deck', {
           encryptedZip: encryptedZipBase64,
@@ -51,7 +53,7 @@ export default function useCreateDeck() {
 
         const decks = decksRecord.content?.decks ?? [];
         await decksRecord.set({ decks: [...decks, { id: doc.id.toUrl(), deck_name: deckName }] });
-        
+
         const deckId = doc.id.toString();
 
         return deckId;

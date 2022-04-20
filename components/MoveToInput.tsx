@@ -1,11 +1,12 @@
 import type { ForwardedRef } from 'react';
 import { forwardRef, useCallback, useMemo, useState } from 'react';
 import { IconChevronsUp, IconSearch, TablerIcon } from '@tabler/icons';
-import { useCurrentDeck } from 'utils/useCurrentDeck';
+import { Workspace } from 'types/supabase';
+import { useCurrentWorkspace } from 'utils/useCurrentWorkspace';
 import useNoteSearch from 'utils/useNoteSearch';
-import useDeck from 'utils/useDeck';
-import { store, useStore } from 'lib/store';
 import { caseInsensitiveStringCompare } from 'utils/string';
+import supabase from 'lib/supabase';
+import { store, useStore } from 'lib/store';
 
 enum OptionType {
   NOTE,
@@ -27,8 +28,7 @@ type Props = {
 
 function MoveToInput(props: Props, ref: ForwardedRef<HTMLInputElement>) {
   const { noteId, onOptionClick: onOptionClickCallback, className = '' } = props;
-  const currentDeck = useCurrentDeck();
-  const deck = useDeck(currentDeck.deck?.id);
+  const { workspace } = useCurrentWorkspace();
 
   const [inputText, setInputText] = useState('');
   const [selectedOptionIndex, setSelectedOptionIndex] = useState<number>(0);
@@ -77,7 +77,7 @@ function MoveToInput(props: Props, ref: ForwardedRef<HTMLInputElement>) {
 
   const onOptionClick = useCallback(
     async (option: Option) => {
-      if (!currentDeck.deck.id) {
+      if (!workspace) {
         return;
       }
 
@@ -91,9 +91,9 @@ function MoveToInput(props: Props, ref: ForwardedRef<HTMLInputElement>) {
         throw new Error(`Option type ${option.type} is not supported`);
       }
 
-      await deck.updateNoteTree();
+      await supabase.from<Workspace>('workspaces').update({ note_tree: store.getState().noteTree }).eq('id', workspace.id);
     },
-    [deck, currentDeck, onOptionClickCallback, noteId, moveNoteTreeItem],
+    [workspace, onOptionClickCallback, noteId, moveNoteTreeItem],
   );
 
   const onKeyDown = useCallback(

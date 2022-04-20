@@ -2,12 +2,14 @@ import type { ForwardedRef } from 'react';
 import { forwardRef, useCallback, useMemo, useState } from 'react';
 import { useRouter } from 'next/router';
 import { v4 as uuidv4 } from 'uuid';
-import { IconBrandDocker, TablerIcon } from '@tabler/icons';
+import { TablerIcon } from '@tabler/icons';
 import { IconFilePlus, IconSearch } from '@tabler/icons';
 import { toast } from 'react-toastify';
 import useDeck from 'utils/useDeck';
 import useNoteSearch from 'utils/useNoteSearch';
 import { caseInsensitiveStringEqual } from 'utils/string';
+import { useCurrentWorkspace } from 'utils/useCurrentWorkspace';
+import { useCurrentDeck } from 'utils/useCurrentDeck';
 
 enum OptionType {
   NOTE,
@@ -29,10 +31,9 @@ type Props = {
 function FindOrCreateInput(props: Props, ref: ForwardedRef<HTMLInputElement>) {
   const { onOptionClick: onOptionClickCallback, className = '' } = props;
   const router = useRouter();
-  const {
-    query: { deckId },
-  } = router;
-  const deck = useDeck(deckId as string);
+  const { workspace } = useCurrentWorkspace();
+  const currentDeck = useCurrentDeck();
+  const deck = useDeck(currentDeck.deck.id);
 
   const [inputText, setInputText] = useState('');
   const [selectedOptionIndex, setSelectedOptionIndex] = useState<number>(0);
@@ -65,6 +66,7 @@ function FindOrCreateInput(props: Props, ref: ForwardedRef<HTMLInputElement>) {
 
   const onOptionClick = useCallback(
     async (option: Option) => {
+      if (!workspace) return;
       onOptionClickCallback?.();
 
       if (option.type === OptionType.NEW_NOTE) {
@@ -82,21 +84,21 @@ function FindOrCreateInput(props: Props, ref: ForwardedRef<HTMLInputElement>) {
 
           const success = await deck.addNote(newNote);
           if (!success) {
-            toast.error(`There was an error creating the note ${inputText}.`);
+            toast.error(`There was an error creating the note.`);
             return;
           }
 
-          router.push(`/app/${deckId}/note/${newNoteId}`);
+          router.push(`/app/${workspace.id}/note/${newNoteId}`);
         } catch (error) {
           console.error(error);
         }
       } else if (option.type === OptionType.NOTE) {
-        router.push(`/app/${deckId}/note/${option.id}`);
+        router.push(`/app/${workspace.id}/note/${option.id}`);
       } else {
         throw new Error(`Option type ${option.type} is not supported`);
       }
     },
-    [deck, deckId, router, inputText, onOptionClickCallback],
+    [deck, workspace, router, inputText, onOptionClickCallback],
   );
 
   const onKeyDown = useCallback(

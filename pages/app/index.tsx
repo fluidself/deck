@@ -5,33 +5,36 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/router';
 // import { useAccount } from 'wagmi';
 import { toast } from 'react-toastify';
-import { useViewerID } from '@self.id/framework';
+import { useViewerID, useCore, useViewerRecord } from '@self.id/framework';
 import { ironOptions } from 'constants/iron-session';
-// import supabase from 'lib/supabase';
+import supabase from 'lib/supabase';
 // import insertDeck from 'lib/api/insertDeck';
 // import selectDecks from 'lib/api/selectDecks';
-// import { Deck } from 'types/supabase';
+import { Workspace } from 'types/supabase';
 import useIsMounted from 'utils/useIsMounted';
 // import { useAuth } from 'utils/useAuth';
-import { AuthSig } from 'types/lit';
-import type { ModelTypes, DeckItem } from 'types/ceramic';
+import { AccessControlCondition, AuthSig, BooleanCondition } from 'types/lit';
+import type { ModelTypes, DeckItem, NoteItem } from 'types/ceramic';
 import { createRequestClient } from 'utils/getRequestState';
 import useCreateDeck from 'utils/useCreateDeck';
+import { decryptDeck } from 'utils/encryption';
 import selectWorkspaces from 'lib/api/selectWorkspaces';
+import insertWorkspace from 'lib/api/insertWorkspace';
 import HomeHeader from 'components/home/HomeHeader';
 import RequestDeckAccess from 'components/home/RequestDeckAccess';
 import ProvideDeckName from 'components/home/ProvideDeckName';
 import Button from 'components/home/Button';
-import insertWorkspace from 'lib/api/insertWorkspace';
 
 export default function AppHome() {
   const router = useRouter();
   // const [{ data: accountData }] = useAccount();
   // const { user, isLoaded, signOut } = useAuth();
   // const { data: decks } = useSWR(user ? 'decks' : null, () => selectDecks(user?.id), { revalidateOnFocus: false });
+  const decksRecord = useViewerRecord<ModelTypes, 'decks'>('decks');
   const [requestingAccess, setRequestingAccess] = useState<boolean>(false);
   const [creatingDeck, setCreatingDeck] = useState<boolean>(false);
   const viewerID = useViewerID();
+  const { tileLoader } = useCore();
   const isMounted = useIsMounted();
   const createDeck = useCreateDeck();
 
@@ -81,56 +84,74 @@ export default function AppHome() {
     }
   };
 
-  // const verifyAccess = async (requestedDeck: string) => {
-  //   if (!requestedDeck) return;
+  const verifyAccess = async (requestedWorkspace: string) => {
+    if (!requestedWorkspace || !decksRecord) return;
 
-  //   if (decks?.find(deck => deck.id === requestedDeck)) {
-  //     toast.success('You own that DECK!');
-  //     setRequestingAccess(false);
-  //     router.push(`/app/${requestedDeck}`);
-  //     return;
-  //   }
+    // if (decks?.find(deck => deck.id === requestedDeck)) {
+    //   toast.success('You own that DECK!');
+    //   setRequestingAccess(false);
+    //   router.push(`/app/${requestedDeck}`);
+    //   return;
+    // }
 
-  //   const { data: accessParams } = await supabase.from<Deck>('decks').select('access_params').eq('id', requestedDeck).single();
-  //   if (!accessParams?.access_params) {
-  //     toast.error('Unable to verify access.');
-  //     return;
-  //   }
+    const { data: workspace } = await supabase
+      .from<Workspace>('workspaces')
+      .select('id, name, master_deck, decks, note_tree')
+      .eq('id', requestedWorkspace)
+      .single();
+    if (!workspace) {
+      toast.error('Unable to verify access.');
+      return;
+    }
 
-  //   const { resource_id: resourceId, access_control_conditions: accessControlConditions } = accessParams?.access_params || {};
-  //   if (!resourceId || !accessControlConditions || !accessControlConditions[0].chain) {
-  //     toast.error('Unable to verify access.');
-  //     return;
-  //   }
+    if (decksRecord.content?.decks) {
+      for (const userDeck of decksRecord.content.decks) {
+        if (workspace.decks.includes(userDeck.id.replace('ceramic://', ''))) {
+          toast.success('Access to DECK is granted.');
+          setRequestingAccess(false);
+          router.push(`/app/${requestedWorkspace}`);
+        }
+      }
+    }
 
-  //   try {
-  //     const chain = accessControlConditions[0].chain;
-  //     const authSig: AuthSig = await LitJsSdk.checkAndSignAuthMessage({ chain });
-  //     const jwt = await window.litNodeClient.getSignedToken({
-  //       accessControlConditions,
-  //       chain,
-  //       authSig,
-  //       resourceId,
-  //     });
+    try {
+      const deckTileDocuments = await tileLoader.loadMany(workspace?.decks);
+      let notes: NoteItem[] = [];
+      // TODO: or just get it from master_deck?
+      // TODO: store acc on workspace after all?
+      let accessControlConditions: (AccessControlCondition | BooleanCondition)[] = [];
 
-  //     const response = await fetch('/api/verify-jwt', {
-  //       method: 'POST',
-  //       headers: {
-  //         'Content-Type': 'application/json',
-  //       },
-  //       body: JSON.stringify({ jwt, requestedDeck }),
-  //     });
+      for (const deckTileDocument of deckTileDocuments) {
+        if (deckTileDocument instanceof Error) return;
+        const { notes: deckNotes, accessControlConditions: deckAcc } = await decryptDeck(deckTileDocument.content);
+        notes = [...notes, ...deckNotes];
+        accessControlConditions = [...deckAcc];
+      }
 
-  //     if (!response.ok) return;
+      const deckId = await createDeck(workspace.name, notes, accessControlConditions);
+      if (!deckId) {
+        toast.error('Unable to verify access.');
+        return;
+      }
 
-  //     toast.success('Access to DECK is granted.');
-  //     setRequestingAccess(false);
-  //     router.push(`/app/${requestedDeck}`);
-  //   } catch (e: any) {
-  //     console.error(e);
-  //     toast.error('Unable to verify access.');
-  //   }
-  // };
+      const { data, error } = await supabase
+        .from<Workspace>('workspaces')
+        .update({ decks: [...workspace.decks, deckId] })
+        .eq('id', workspace.id);
+
+      if (error) {
+        toast.error('Unable to verify access.');
+        return;
+      }
+
+      toast.success('Access to DECK is granted.');
+      setRequestingAccess(false);
+      router.push(`/app/${requestedWorkspace}`);
+    } catch (error) {
+      console.error(error);
+      toast.error('Unable to verify access.');
+    }
+  };
 
   return (
     <div id="app-container" className="h-screen font-display text-base">
@@ -157,8 +178,7 @@ export default function AppHome() {
               {requestingAccess ? (
                 <RequestDeckAccess
                   onCancel={() => setRequestingAccess(false)}
-                  onDeckAccessRequested={() => {}}
-                  // onDeckAccessRequested={async (requestedDeck: string) => await verifyAccess(requestedDeck)}
+                  onDeckAccessRequested={async (requestedWorkspace: string) => await verifyAccess(requestedWorkspace)}
                 />
               ) : (
                 <Button onClick={() => setRequestingAccess(true)}>Join a DECK</Button>
