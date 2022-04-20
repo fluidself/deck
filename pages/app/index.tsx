@@ -5,6 +5,7 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/router';
 // import { useAccount } from 'wagmi';
 import { toast } from 'react-toastify';
+import { useViewerID } from '@self.id/framework';
 import { ironOptions } from 'constants/iron-session';
 // import supabase from 'lib/supabase';
 // import insertDeck from 'lib/api/insertDeck';
@@ -16,6 +17,7 @@ import { AuthSig } from 'types/lit';
 import type { ModelTypes, DeckItem } from 'types/ceramic';
 import { createRequestClient } from 'utils/getRequestState';
 import useCreateDeck from 'utils/useCreateDeck';
+import selectWorkspaces from 'lib/api/selectWorkspaces';
 import HomeHeader from 'components/home/HomeHeader';
 import RequestDeckAccess from 'components/home/RequestDeckAccess';
 import ProvideDeckName from 'components/home/ProvideDeckName';
@@ -29,6 +31,7 @@ export default function AppHome() {
   // const { data: decks } = useSWR(user ? 'decks' : null, () => selectDecks(user?.id), { revalidateOnFocus: false });
   const [requestingAccess, setRequestingAccess] = useState<boolean>(false);
   const [creatingDeck, setCreatingDeck] = useState<boolean>(false);
+  const viewerID = useViewerID();
   const isMounted = useIsMounted();
   const createDeck = useCreateDeck();
 
@@ -54,6 +57,8 @@ export default function AppHome() {
   // }, [accountData?.connector, signOut]);
 
   const createNewDeck = async (deckName: string) => {
+    if (!viewerID?.id) return;
+
     try {
       const deckId = await createDeck(deckName);
       if (!deckId) {
@@ -61,7 +66,7 @@ export default function AppHome() {
         return;
       }
 
-      const workspace = await insertWorkspace({ name: deckName, master_deck: deckId, decks: [deckId] });
+      const workspace = await insertWorkspace({ name: deckName, master_deck: deckId, master_did: viewerID.id, decks: [deckId] });
       if (!workspace) {
         toast.error('There was an error creating your DECK');
         return;
@@ -172,13 +177,14 @@ export const getServerSideProps = withIronSessionSsr(async function ({ req }) {
   const prefetch = [];
 
   if (requestClient.viewerID != null) {
-    // const response = await requestClient.dataStore.get('decks', requestClient.viewerID);
-    // const decks = response?.decks ?? [];
+    const workspaces = await selectWorkspaces(requestClient.viewerID);
+    const response = await requestClient.dataStore.get('decks', requestClient.viewerID);
+    const deckIds = (response?.decks ?? []).map(deck => deck.id.replace('ceramic://', ''));
 
-    // if (decks.length) {
-    //   const newestDeck = decks[decks.length - 1];
-    //   return { redirect: { destination: `/app/${newestDeck.id.replace('ceramic://', '')}`, permanent: false } };
-    // }
+    if (deckIds.length && workspaces.length) {
+      const matchingWorkspace = workspaces.filter(workspace => deckIds.includes(workspace.master_deck))[0];
+      return { redirect: { destination: `/app/${matchingWorkspace.id}`, permanent: false } };
+    }
 
     // prefetch.push(requestClient.prefetch('basicProfile', requestClient.viewerID));
     prefetch.push(requestClient.prefetch('cryptoAccounts', requestClient.viewerID));

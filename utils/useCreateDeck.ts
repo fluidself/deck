@@ -49,11 +49,9 @@ export default function useCreateDeck() {
           throw new Error('There was an error creating the DECK');
         }
 
-        // const decks = decksRecord.content?.decks ?? [];
-        const decks: any = [];
+        const decks = decksRecord.content?.decks ?? [];
         await decksRecord.set({ decks: [...decks, { id: doc.id.toUrl(), deck_name: deckName }] });
-
-        // const redirectLocation = `${process.env.BASE_URL}/app/${doc.id.toString()}`;
+        
         const deckId = doc.id.toString();
 
         return deckId;

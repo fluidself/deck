@@ -4,6 +4,7 @@ import type { Workspace } from 'types/supabase';
 type WorkspaceInsert = {
   name: string;
   master_deck: string;
+  master_did: string;
   decks: string[];
 };
 

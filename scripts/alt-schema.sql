@@ -11,7 +11,7 @@ CREATE TABLE public.workspaces (
   "name" text NOT NULL,
   id uuid NOT NULL DEFAULT uuid_generate_v4(),
   master_deck text NOT NULL,
-  -- access_control_conditions jsonb NOT NULL,
+  master_did text NOT NULL,
   decks jsonb NOT NULL,
   note_tree jsonb NULL,
   CONSTRAINT workspaces_pkey PRIMARY KEY (id)

@@ -6,6 +6,7 @@ import { useRouter } from 'next/router';
 // import { useAccount } from 'wagmi';
 import { ironOptions } from 'constants/iron-session';
 import { createRequestClient } from 'utils/getRequestState';
+import selectWorkspaces from 'lib/api/selectWorkspaces';
 // import { useAuth } from 'utils/useAuth';
 import { EthereumIcon } from 'components/home/EthereumIcon';
 import Button from 'components/home/Button';
@@ -74,28 +75,22 @@ export default function Home() {
   );
 }
 
-// TODO: what should this test look like?
-// look up decks for DID
-// look up all workspaces in supabase
-// if match found, forward them there
-// or localstorage ?
-// or save user id as foreign key on workspaces in supabase?
+export const getServerSideProps = withIronSessionSsr(async function ({ req }) {
+  const cookie = req.headers.cookie;
+  const requestClient = createRequestClient(cookie);
 
-// export const getServerSideProps = withIronSessionSsr(async function ({ req }) {
-//   const cookie = req.headers.cookie;
-//   const requestClient = createRequestClient(cookie);
+  if (requestClient.viewerID != null) {
+    const workspaces = await selectWorkspaces(requestClient.viewerID);
+    const response = await requestClient.dataStore.get('decks', requestClient.viewerID);
+    const deckIds = (response?.decks ?? []).map(deck => deck.id.replace('ceramic://', ''));
 
-//   if (requestClient.viewerID != null) {
-//     const response = await requestClient.dataStore.get('decks', requestClient.viewerID);
-//     const decks = response?.decks ?? [];
+    if (deckIds.length && workspaces.length) {
+      const matchingWorkspace = workspaces.filter(workspace => deckIds.includes(workspace.master_deck))[0];
+      return { redirect: { destination: `/app/${matchingWorkspace.id}`, permanent: false } };
+    }
 
-//     if (decks.length) {
-//       const newestDeck = decks[decks.length - 1];
-//       return { redirect: { destination: `/app/${newestDeck.id.replace('ceramic://', '')}`, permanent: false } };
-//     }
+    return { redirect: { destination: '/app', permanent: false } };
+  }
 
-//     return { redirect: { destination: '/app', permanent: false } };
-//   }
-
-//   return { props: {} };
-// }, ironOptions);
+  return { props: {} };
+}, ironOptions);

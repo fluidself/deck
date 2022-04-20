@@ -31,7 +31,8 @@ export type AccessParams = {
 export type Workspace = {
   id: string;
   name: string;
-  master_deck_id: string;
+  master_deck: string;
+  master_did: string;
   decks: string[];
   note_tree: NoteTreeItem[];
 };
