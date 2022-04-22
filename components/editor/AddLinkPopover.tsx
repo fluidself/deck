@@ -5,12 +5,16 @@ import type { TablerIcon } from '@tabler/icons';
 import { IconUnlink, IconLink, IconFilePlus } from '@tabler/icons';
 import { v4 as uuidv4 } from 'uuid';
 import { toast } from 'react-toastify';
-import useDeck from 'utils/useDeck';
-import { useCurrentDeck } from 'utils/useCurrentDeck';
 import { insertExternalLink, insertNoteLink, removeLink } from 'editor/formatting';
-import { isUrl } from 'utils/url';
+import type { Workspace } from 'types/supabase';
+import supabase from 'lib/supabase';
+import { useStore } from 'lib/store';
+import useDeck from 'utils/useDeck';
+import { useCurrentWorkspace } from 'utils/useCurrentWorkspace';
+import { useCurrentDeck } from 'utils/useCurrentDeck';
 import useNoteSearch from 'utils/useNoteSearch';
 import { caseInsensitiveStringEqual } from 'utils/string';
+import { isUrl } from 'utils/url';
 import EditorPopover from './EditorPopover';
 import type { AddLinkPopoverState } from './Editor';
 
@@ -35,6 +39,7 @@ type Props = {
 
 export default function AddLinkPopover(props: Props) {
   const { addLinkPopoverState, setAddLinkPopoverState } = props;
+  const { workspace } = useCurrentWorkspace();
   const currentDeck = useCurrentDeck();
   const deck = useDeck(currentDeck.deck?.id);
   const inputRef = useRef<HTMLInputElement | null>(null);
@@ -45,6 +50,8 @@ export default function AddLinkPopover(props: Props) {
 
   const search = useNoteSearch({ numOfResults: 10 });
   const searchResults = useMemo(() => search(linkText), [search, linkText]);
+
+  const upsertNote = useStore(state => state.upsertNote);
 
   const options = useMemo(() => {
     const result: Array<Option> = [];
@@ -105,7 +112,7 @@ export default function AddLinkPopover(props: Props) {
 
   const onOptionClick = useCallback(
     async (option?: Option) => {
-      if (!option || !deck) {
+      if (!option || !deck || !workspace) {
         return;
       }
 
@@ -123,7 +130,7 @@ export default function AddLinkPopover(props: Props) {
       } else if (option.type === OptionType.NEW_NOTE) {
         // Add a new note and insert a link to it with the note title as the link text
         const noteId = uuidv4();
-        const newNote = {
+        const newNote: any = {
           id: noteId,
           title: linkText,
           content: [{ id: uuidv4(), type: 'paragraph', children: [{ text: '' }] }],
@@ -135,9 +142,22 @@ export default function AddLinkPopover(props: Props) {
 
         const success = await deck.addNote(newNote);
         if (!success) {
-          toast.error(`There was an error creating the note ${linkText}.`);
+          toast.error(`There was an error creating the note.`);
           return;
         }
+
+        const { data, error } = await supabase
+          .from<Workspace>('workspaces')
+          .update({ notes: [...workspace.notes, newNote.id] })
+          .eq('id', workspace.id)
+          .single();
+        if (!data || error) {
+          toast.error(`There was an error creating the note.`);
+          return;
+        }
+
+        upsertNote(newNote);
+
         Transforms.move(editor, { distance: 1, unit: 'offset' }); // Focus after the note link
       } else if (option.type === OptionType.REMOVE_LINK) {
         // Remove the link
@@ -146,7 +166,7 @@ export default function AddLinkPopover(props: Props) {
         throw new Error(`Option type ${option.type} is not supported`);
       }
     },
-    [editor, deck, hidePopover, linkText],
+    [editor, deck, workspace, hidePopover, linkText],
   );
 
   const onKeyDown = useCallback(

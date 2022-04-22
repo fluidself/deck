@@ -159,19 +159,23 @@ export default function NoteHeader() {
         <div className="inline-flex justify-center">
           {!isCloseButtonVisible && viewerID && (
             <div className="flex items-center">
-              <div className="mr-3">
-                <Select
-                  className="react-select-container-header"
-                  classNamePrefix="react-select-header"
-                  options={workspaceOptions}
-                  value={selectedWorkspace}
-                  onChange={value => {
-                    setSelectedWorkspace(value);
-                    window.location.assign(`${process.env.BASE_URL}/app/${value.id}`);
-                  }}
-                />
-              </div>
-              <NoteHeaderDivider />
+              {workspaceOptions && (
+                <>
+                  <div className="mr-3">
+                    <Select
+                      className="react-select-container-header"
+                      classNamePrefix="react-select-header"
+                      options={workspaceOptions}
+                      value={selectedWorkspace}
+                      onChange={value => {
+                        setSelectedWorkspace(value);
+                        window.location.assign(`${process.env.BASE_URL}/app/${value.id}`);
+                      }}
+                    />
+                  </div>
+                  <NoteHeaderDivider />
+                </>
+              )}
               <div className="px-2 pt-1 pb-1 text-sm text-gray-600 overflow-ellipsis dark:text-gray-400">
                 {getProfileInfo(viewerID.id, profileRecord.content).displayName}
               </div>

@@ -98,7 +98,7 @@ export default function AppLayout(props: Props) {
       setDeckId(currentUserDeck.id.replace('ceramic://', ''));
     }
 
-    const deckTileDocuments = await tileLoader.loadMany(workspace?.decks);
+    const deckTileDocuments = await tileLoader.loadMany(workspace.decks);
     let notes: NoteItem[] = [];
 
     // TODO: DRY up and reuse in verifyAccess?
@@ -108,9 +108,11 @@ export default function AppLayout(props: Props) {
       notes = [...notes, ...deckNotes];
     }
 
-    // TODO: simply removing duplicate ids at this point.
-    // should it take into account updated_at too?
-    notes = notes.filter((value, index, self) => index === self.findIndex(t => t.id === value.id));
+    notes = notes
+      .sort((a, b) => (a.updated_at < b.updated_at ? -1 : a.updated_at > b.updated_at ? 1 : 0))
+      .filter((value, index, self) => index === self.findIndex(t => t.id === value.id));
+    // TODO: make sure this filter does what I want
+    // TODO: experiment with each user having same note. latest updated_at should be shown
 
     // Redirect to most recent note or first note in database
     if (router.pathname.match(/^\/app\/[^/]+$/i)) {
@@ -156,7 +158,7 @@ export default function AppLayout(props: Props) {
     }
 
     setIsPageLoaded(true);
-  }, [isMounted, workspaceId, decksRecord, router, setNotes, setNoteTree, setDeckIdStore]);
+  }, [isMounted, workspaceId, decksRecord.isLoading, router, setNotes, setNoteTree, setDeckId]);
 
   useEffect(() => {
     if (!viewerID?.id) {
@@ -165,7 +167,7 @@ export default function AppLayout(props: Props) {
     } else if (!isPageLoaded && decksRecord && !decksRecord.isLoading) {
       initData();
     }
-  }, [router, viewerID, isPageLoaded, decksRecord, initData]);
+  }, [router, viewerID?.id, isPageLoaded, decksRecord.isLoading, initData]);
 
   const [isFindOrCreateModalOpen, setIsFindOrCreateModalOpen] = useState(false);
   // const [isSettingsOpen, setIsSettingsOpen] = useState(false);

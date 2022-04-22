@@ -75,6 +75,7 @@ export default function Home() {
   );
 }
 
+// TODO: not working as intended when switching between MetaMask accounts in one browser
 export const getServerSideProps = withIronSessionSsr(async function ({ req }) {
   const cookie = req.headers.cookie;
   const requestClient = createRequestClient(cookie);

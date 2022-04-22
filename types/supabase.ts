@@ -34,5 +34,6 @@ export type Workspace = {
   master_deck: string;
   master_did: string;
   decks: string[];
+  notes: string[];
   note_tree: NoteTreeItem[];
 };

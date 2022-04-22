@@ -1,6 +1,6 @@
 import { useCallback } from 'react';
 import { useConnection, useViewerRecord, useCore } from '@self.id/framework';
-import type { ModelTypes } from 'types/ceramic';
+import type { ModelTypes, NoteItem } from 'types/ceramic';
 import createOnboardingNotes from 'utils/createOnboardingNotes';
 import { encryptWithLit } from 'utils/encryption';
 
@@ -12,7 +12,7 @@ export default function useCreateDeck() {
 
   const create = useCallback(
     async (deckName, notes = null, acc = null) => {
-      if (!decksRecord.set || !accountsRecord.content) return;
+      if (!decksRecord.set || !accountsRecord.content) return { success: false };
 
       if (connection.status !== 'connected') {
         await connect();
@@ -36,9 +36,15 @@ export default function useCreateDeck() {
                 },
               },
             ];
-        // const onboardingNotes = createOnboardingNotes();
-        // const toEncrypt = JSON.stringify({ notes: onboardingNotes });
-        const notesToEncrypt = notes ? notes : createOnboardingNotes();
+        let newNoteIds: string[] | null = null;
+        let notesToEncrypt: any = null;
+        if (notes) {
+          notesToEncrypt = notes;
+        } else {
+          notesToEncrypt = createOnboardingNotes();
+          newNoteIds = notesToEncrypt.map((note: NoteItem) => note.id);
+        }
+
         const toEncrypt = JSON.stringify({ notes: notesToEncrypt });
         const [encryptedZipBase64, encryptedSymmetricKeyBase64] = await encryptWithLit(toEncrypt, accessControlConditions);
         const doc = await dataModel.createTile('Deck', {
@@ -56,7 +62,7 @@ export default function useCreateDeck() {
 
         const deckId = doc.id.toString();
 
-        return deckId;
+        return { success: true, deckId, newNoteIds };
       } catch (error) {
         throw error ?? new Error('There was an error creating the DECK');
       }

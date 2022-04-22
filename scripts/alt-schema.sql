@@ -13,6 +13,7 @@ CREATE TABLE public.workspaces (
   master_deck text NOT NULL,
   master_did text NOT NULL,
   decks jsonb NOT NULL,
+  notes jsonb NOT NULL,
   note_tree jsonb NULL,
   CONSTRAINT workspaces_pkey PRIMARY KEY (id)
 );

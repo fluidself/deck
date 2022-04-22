@@ -5,6 +5,9 @@ import { v4 as uuidv4 } from 'uuid';
 import { TablerIcon } from '@tabler/icons';
 import { IconFilePlus, IconSearch } from '@tabler/icons';
 import { toast } from 'react-toastify';
+import supabase from 'lib/supabase';
+import { useStore } from 'lib/store';
+import type { Workspace } from 'types/supabase';
 import useDeck from 'utils/useDeck';
 import useNoteSearch from 'utils/useNoteSearch';
 import { caseInsensitiveStringEqual } from 'utils/string';
@@ -41,6 +44,8 @@ function FindOrCreateInput(props: Props, ref: ForwardedRef<HTMLInputElement>) {
   const search = useNoteSearch({ numOfResults: 10 });
   const searchResults = useMemo(() => search(inputText), [search, inputText]);
 
+  const upsertNote = useStore(state => state.upsertNote);
+
   const options = useMemo(() => {
     const result: Array<Option> = [];
     // Show new note option if there isn't already a note called `inputText`
@@ -74,7 +79,7 @@ function FindOrCreateInput(props: Props, ref: ForwardedRef<HTMLInputElement>) {
           if (!deck || deck.isLoading || !deck.content) return;
 
           const newNoteId = uuidv4();
-          const newNote = {
+          const newNote: any = {
             id: newNoteId,
             title: inputText,
             content: [{ id: uuidv4(), type: 'paragraph', children: [{ text: '' }] }],
@@ -87,6 +92,18 @@ function FindOrCreateInput(props: Props, ref: ForwardedRef<HTMLInputElement>) {
             toast.error(`There was an error creating the note.`);
             return;
           }
+
+          const { data, error } = await supabase
+            .from<Workspace>('workspaces')
+            .update({ notes: [...workspace.notes, newNote.id] })
+            .eq('id', workspace.id)
+            .single();
+          if (!data || error) {
+            toast.error(`There was an error creating the note.`);
+            return;
+          }
+
+          upsertNote(newNote);
 
           router.push(`/app/${workspace.id}/note/${newNoteId}`);
         } catch (error) {

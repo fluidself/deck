@@ -6,6 +6,7 @@ type WorkspaceInsert = {
   master_deck: string;
   master_did: string;
   decks: string[];
+  notes: string[];
 };
 
 export default async function insertWorkspace(workspace: WorkspaceInsert) {

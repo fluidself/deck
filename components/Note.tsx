@@ -15,7 +15,7 @@ import Backlinks from './editor/backlinks/Backlinks';
 import NoteHeader from './editor/NoteHeader';
 import ErrorBoundary from './ErrorBoundary';
 
-const SYNC_DEBOUNCE_MS = 10000;
+const SYNC_DEBOUNCE_MS = 5000;
 
 type Props = {
   noteId: string;
@@ -76,6 +76,14 @@ function Note(props: Props) {
         toast.error('Something went wrong saving your note. Please try again later.');
         return;
       }
+
+      // Don't update the note if it is currently open
+      const openNoteIds = store.getState().openNoteIds;
+      noteUpdates.forEach((noteUpdate: NoteItem) => {
+        if (!openNoteIds.includes(noteUpdate.id)) {
+          updateNote(noteUpdate);
+        }
+      });
 
       setSyncState({ isTitleSynced: true, isContentSynced: true });
     },

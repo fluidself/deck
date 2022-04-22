@@ -78,8 +78,7 @@ export default function useDeck(id: string) {
   const deckDoc = useTileDoc<Deck>(id);
   const { workspace } = useCurrentWorkspace();
 
-  const upsertNoteStore = useStore(state => state.upsertNote);
-  const updateNoteStore = useStore(state => state.updateNote);
+  // const updateNoteStore = useStore(state => state.updateNote);
   const deleteNoteStore = useStore(state => state.deleteNote);
 
   const content = deckDoc.content;
@@ -107,7 +106,6 @@ export default function useDeck(id: string) {
           accessControlConditions,
         });
 
-        upsertNoteStore({ ...newNote, content: newNote.content });
         return true;
       } catch (error) {
         console.error(error);
@@ -131,7 +129,9 @@ export default function useDeck(id: string) {
         const noteUpdateIds = noteUpdates.map((note: NoteItem) => note.id);
         let otherNotes = noteToDelete ? notes.filter(note => note.id !== noteToDelete) : notes;
         otherNotes = otherNotes.filter(note => !noteUpdateIds.includes(note.id));
+        // .filter((value, index, self) => index === self.findIndex(t => t.id === value.id));
 
+        console.log(`saving ${[...otherNotes, ...noteUpdates].length} notes`);
         const toEncrypt = JSON.stringify({ notes: [...otherNotes, ...noteUpdates] });
         const [encryptedZipBase64, encryptedSymmetricKeyBase64] = await encryptWithLit(toEncrypt, accessControlConditions);
 
@@ -140,19 +140,6 @@ export default function useDeck(id: string) {
           symmetricKey: encryptedSymmetricKeyBase64,
           accessControlConditions,
         });
-
-        // Don't update the note if it is currently open
-        const openNoteIds = store.getState().openNoteIds;
-        noteUpdates.forEach((noteUpdate: NoteItem) => {
-          if (!openNoteIds.includes(noteUpdate.id)) {
-            updateNoteStore({ ...noteUpdate, content: noteUpdate.content });
-          }
-        });
-
-        if (noteToDelete) {
-          deleteNoteStore(noteToDelete);
-          await supabase.from<Workspace>('workspaces').update({ note_tree: store.getState().noteTree }).eq('id', workspace.id);
-        }
 
         return true;
       } catch (error) {

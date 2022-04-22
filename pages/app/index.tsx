@@ -63,13 +63,19 @@ export default function AppHome() {
     if (!viewerID?.id) return;
 
     try {
-      const deckId = await createDeck(deckName);
-      if (!deckId) {
+      const { success, deckId, newNoteIds } = await createDeck(deckName);
+      if (!success || !deckId || !newNoteIds) {
         toast.error('There was an error creating your DECK');
         return;
       }
 
-      const workspace = await insertWorkspace({ name: deckName, master_deck: deckId, master_did: viewerID.id, decks: [deckId] });
+      const workspace = await insertWorkspace({
+        name: deckName,
+        master_deck: deckId,
+        master_did: viewerID.id,
+        decks: [deckId],
+        notes: newNoteIds,
+      });
       if (!workspace) {
         toast.error('There was an error creating your DECK');
         return;
@@ -96,7 +102,7 @@ export default function AppHome() {
 
     const { data: workspace } = await supabase
       .from<Workspace>('workspaces')
-      .select('id, name, master_deck, decks, note_tree')
+      .select('id, name, master_deck, decks, notes, note_tree')
       .eq('id', requestedWorkspace)
       .single();
     if (!workspace) {
@@ -110,6 +116,7 @@ export default function AppHome() {
           toast.success('Access to DECK is granted.');
           setRequestingAccess(false);
           router.push(`/app/${requestedWorkspace}`);
+          return;
         }
       }
     }
@@ -128,8 +135,11 @@ export default function AppHome() {
         accessControlConditions = [...deckAcc];
       }
 
-      const deckId = await createDeck(workspace.name, notes, accessControlConditions);
-      if (!deckId) {
+      // TODO: this sanity check needed?
+      notes = notes.filter(note => workspace.notes.includes(note.id));
+
+      const { success, deckId } = await createDeck(workspace.name, notes, accessControlConditions);
+      if (!success || !deckId) {
         toast.error('Unable to verify access.');
         return;
       }
