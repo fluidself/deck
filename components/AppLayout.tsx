@@ -43,6 +43,7 @@ export default function AppLayout(props: Props) {
   const { tileLoader } = useCore();
 
   const [isPageLoaded, setIsPageLoaded] = useState(false);
+  const [lastDataInit, setLastDataInit] = useState(Date.now());
   const [deckId, setDeckId] = useState<string | null>(null);
 
   // useEffect(() => {
@@ -66,7 +67,7 @@ export default function AppLayout(props: Props) {
 
   const setNotes = useStore(state => state.setNotes);
   const setNoteTree = useStore(state => state.setNoteTree);
-  const setDeckIdStore = useStore(state => state.setDeckId);
+  // const setDeckIdStore = useStore(state => state.setDeckId);
 
   const initLit = async () => {
     const client = new LitJsSdk.LitNodeClient({ alertWhenUnauthorized: false, debug: false });
@@ -85,7 +86,7 @@ export default function AppLayout(props: Props) {
 
     const { data: workspace } = await supabase
       .from<Workspace>('workspaces')
-      .select('master_deck, decks, note_tree')
+      .select('master_deck, decks, notes, note_tree')
       .eq('id', workspaceId)
       .single();
     if (!workspace) return;
@@ -110,7 +111,8 @@ export default function AppLayout(props: Props) {
 
     notes = notes
       .sort((a, b) => (a.updated_at < b.updated_at ? -1 : a.updated_at > b.updated_at ? 1 : 0))
-      .filter((value, index, self) => index === self.findIndex(t => t.id === value.id));
+      .filter((value, index, self) => index === self.findIndex(t => t.id === value.id))
+      .filter(note => workspace.notes.includes(note.id));
     // TODO: make sure this filter does what I want
     // TODO: experiment with each user having same note. latest updated_at should be shown
 
@@ -189,6 +191,48 @@ export default function AppLayout(props: Props) {
       setIsPageStackingOn(false);
     }
   }, [setIsSidebarOpen, setIsPageStackingOn, hasHydrated]);
+
+  const subscribeToChanges = () => {
+    const subscription = supabase
+      .from<Workspace>(`workspaces:id=eq.${workspaceId}`)
+      .on('*', payload => {
+        if (payload.eventType === 'UPDATE') {
+          if (payload.old.notes.length !== payload.new.notes.length) {
+            if (payload.new.notes.length !== Object.keys(store.getState().notes).length) {
+              initData();
+            }
+          }
+        }
+      })
+      .subscribe((status: any) => {
+        if (status === 'RETRYING_AFTER_TIMEOUT') {
+          initData();
+        }
+      });
+
+    return subscription;
+  };
+
+  const refreshDataOnFocus = () => {
+    if ((Date.now() - lastDataInit) / 1000 > 180) {
+      setLastDataInit(Date.now());
+      initData();
+    }
+  };
+
+  useEffect(() => {
+    if (!workspaceId) {
+      return;
+    }
+
+    const subscription = subscribeToChanges();
+    window.addEventListener('focus', refreshDataOnFocus);
+
+    return () => {
+      subscription.unsubscribe();
+      window.removeEventListener('focus', refreshDataOnFocus);
+    };
+  }, [workspaceId, initData]);
 
   const hotkeys = useMemo(
     () => [

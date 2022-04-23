@@ -1,14 +1,11 @@
 import type { StreamMetadata } from '@ceramicnetwork/common';
 import type { TileDocument } from '@ceramicnetwork/stream-tile';
-import { PublicID, useConnection, useCore, usePublicRecord, useViewerID, useViewerRecord } from '@self.id/framework';
+import { PublicID, useConnection, useCore, useViewerID, usePublicRecord, useViewerRecord } from '@self.id/framework';
 // import type { PublicRecord } from '@self.id/framework';
 import { useCallback } from 'react';
 import { useMutation, useQuery, useQueryClient } from 'react-query';
-import supabase from 'lib/supabase';
-import { store, useStore } from 'lib/store';
 import type { ModelTypes, Deck, NoteItem } from 'types/ceramic';
 import { AccessControlCondition, BooleanCondition } from 'types/lit';
-import { Workspace } from 'types/supabase';
 import { decryptDeck, encryptWithLit } from 'utils/encryption';
 import { useCurrentWorkspace } from 'utils/useCurrentWorkspace';
 
@@ -78,9 +75,6 @@ export default function useDeck(id: string) {
   const deckDoc = useTileDoc<Deck>(id);
   const { workspace } = useCurrentWorkspace();
 
-  // const updateNoteStore = useStore(state => state.updateNote);
-  const deleteNoteStore = useStore(state => state.deleteNote);
-
   const content = deckDoc.content;
   const isEditable = deckDoc.isController;
 
@@ -130,8 +124,10 @@ export default function useDeck(id: string) {
         let otherNotes = noteToDelete ? notes.filter(note => note.id !== noteToDelete) : notes;
         otherNotes = otherNotes.filter(note => !noteUpdateIds.includes(note.id));
         // .filter((value, index, self) => index === self.findIndex(t => t.id === value.id));
+        // TODO: look into this?
 
         console.log(`saving ${[...otherNotes, ...noteUpdates].length} notes`);
+        console.log([...otherNotes, ...noteUpdates]);
         const toEncrypt = JSON.stringify({ notes: [...otherNotes, ...noteUpdates] });
         const [encryptedZipBase64, encryptedSymmetricKeyBase64] = await encryptWithLit(toEncrypt, accessControlConditions);
 

@@ -28,6 +28,8 @@ const SidebarNoteLink = (props: Props, forwardedRef: ForwardedRef<HTMLDivElement
   // We add 16px for every level of nesting, plus 8px base padding
   const leftPadding = useMemo(() => node.depth * 16 + 8, [node.depth]);
 
+  if (!note) return null;
+
   return (
     <SidebarItem
       ref={forwardedRef}

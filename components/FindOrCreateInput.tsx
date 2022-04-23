@@ -88,26 +88,28 @@ function FindOrCreateInput(props: Props, ref: ForwardedRef<HTMLInputElement>) {
           };
 
           const success = await deck.addNote(newNote);
-          if (!success) {
-            toast.error(`There was an error creating the note.`);
-            return;
-          }
+          if (!success) throw new Error(`There was an error creating the note.`);
+
+          const { data: workspaceNotes } = await supabase
+            .from<Workspace>('workspaces')
+            .select('notes')
+            .eq('id', workspace.id)
+            .single();
+          if (!workspaceNotes) throw new Error(`There was an error creating the note.`);
 
           const { data, error } = await supabase
             .from<Workspace>('workspaces')
-            .update({ notes: [...workspace.notes, newNote.id] })
+            .update({ notes: [...workspaceNotes.notes, newNote.id] })
             .eq('id', workspace.id)
             .single();
-          if (!data || error) {
-            toast.error(`There was an error creating the note.`);
-            return;
-          }
+          if (!data || error) throw new Error(`There was an error creating the note.`);
 
           upsertNote(newNote);
 
           router.push(`/app/${workspace.id}/note/${newNoteId}`);
         } catch (error) {
           console.error(error);
+          toast.error(`There was an error creating the note.`);
         }
       } else if (option.type === OptionType.NOTE) {
         router.push(`/app/${workspace.id}/note/${option.id}`);

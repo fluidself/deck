@@ -57,9 +57,16 @@ export default function useDeleteNote() {
         });
       }
 
+      const { data: workspaceNotes } = await supabase
+        .from<Workspace>('workspaces')
+        .select('notes')
+        .eq('id', workspace.id)
+        .single();
+      if (!workspaceNotes) return false;
+
       const { data, error } = await supabase
         .from<Workspace>('workspaces')
-        .update({ notes: workspace.notes.filter(id => id !== noteId), note_tree: store.getState().noteTree })
+        .update({ notes: workspaceNotes.notes.filter(id => id !== noteId), note_tree: store.getState().noteTree })
         .eq('id', workspace.id);
       if (!data || error) {
         return false;
