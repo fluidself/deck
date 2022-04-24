@@ -10,13 +10,11 @@ import { useViewerID, useCore, useViewerRecord } from '@self.id/framework';
 // import { useAccount } from 'wagmi';
 import { useStore, store, NoteTreeItem, getNoteTreeItem, Notes, SidebarTab } from 'lib/store';
 import supabase from 'lib/supabase';
-// import { Note, Deck } from 'types/supabase';
 import type { Deck, ModelTypes, NoteItem } from 'types/ceramic';
 import type { Workspace } from 'types/supabase';
 import { ProvideCurrentDeck } from 'utils/useCurrentDeck';
 import { ProvideCurrentWorkspace } from 'utils/useCurrentWorkspace';
 import useHotkeys from 'utils/useHotkeys';
-// import { useAuth } from 'utils/useAuth';
 import { isMobile } from 'utils/device';
 import useIsMounted from 'utils/useIsMounted';
 import { decryptDeck } from 'utils/encryption';
@@ -196,11 +194,9 @@ export default function AppLayout(props: Props) {
     const subscription = supabase
       .from<Workspace>(`workspaces:id=eq.${workspaceId}`)
       .on('*', payload => {
-        if (payload.eventType === 'UPDATE') {
-          if (payload.old.notes.length !== payload.new.notes.length) {
-            if (payload.new.notes.length !== Object.keys(store.getState().notes).length) {
-              initData();
-            }
+        if (payload.eventType === 'UPDATE' && payload.old.notes.length !== payload.new.notes.length) {
+          if (payload.new.notes.length !== Object.keys(store.getState().notes).length) {
+            initData();
           }
         }
       })
