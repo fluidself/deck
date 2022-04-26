@@ -109,10 +109,16 @@ export default function AppLayout(props: Props) {
 
     notes = notes
       .sort((a, b) => (a.updated_at < b.updated_at ? -1 : a.updated_at > b.updated_at ? 1 : 0))
-      .filter((value, index, self) => index === self.findIndex(t => t.id === value.id))
-      .filter(note => workspace.notes.includes(note.id));
-    // TODO: make sure this filter does what I want
-    // TODO: experiment with each user having same note. latest updated_at should be shown
+      .reverse()
+      .reduce((acc: NoteItem[], item) => {
+        if (acc.findIndex(i => i.id === item.id) === -1) {
+          acc.push(item);
+        }
+
+        return acc;
+      }, [])
+      .filter(note => workspace.notes.includes(note.id))
+      .reverse();
 
     // Redirect to most recent note or first note in database
     if (router.pathname.match(/^\/app\/[^/]+$/i)) {
