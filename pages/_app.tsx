@@ -7,6 +7,7 @@ import { Provider, defaultChains } from 'wagmi';
 import { InjectedConnector } from 'wagmi/connectors/injected';
 import { providers } from 'ethers';
 import { ProvideAuth } from 'utils/useAuth';
+import { GunProvider } from 'utils/useGun';
 import AppLayout from 'components/AppLayout';
 import ServiceWorker from 'components/ServiceWorker';
 import 'styles/globals.css';
@@ -46,15 +47,17 @@ export default function MyApp({ Component, pageProps, router }: AppProps) {
       </Head>
       <ServiceWorker>
         <Provider autoConnect connectors={connectors} provider={provider}>
-          <ProvideAuth>
-            {router.pathname.startsWith('/app/') ? (
-              <AppLayout>
+          <GunProvider sessionUser={pageProps.user}>
+            <ProvideAuth>
+              {router.pathname.startsWith('/app/') ? (
+                <AppLayout>
+                  <Component {...pageProps} />
+                </AppLayout>
+              ) : (
                 <Component {...pageProps} />
-              </AppLayout>
-            ) : (
-              <Component {...pageProps} />
-            )}
-          </ProvideAuth>
+              )}
+            </ProvideAuth>
+          </GunProvider>
         </Provider>
       </ServiceWorker>
       <ToastContainer position="top-center" hideProgressBar newestOnTop={true} theme="colored" />

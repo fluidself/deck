@@ -4,6 +4,7 @@ import { AccessControlCondition, ResourceId } from './lit';
 
 export type User = {
   id: string;
+  gun_key: string;
 };
 
 export type Deck = {
