@@ -4,6 +4,7 @@ import { withIronSessionSsr } from 'iron-session/next';
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/router';
 import { useAccount } from 'wagmi';
+import { v4 as uuidv4 } from 'uuid';
 import useSWR from 'swr';
 import { toast } from 'react-toastify';
 import { ironOptions } from 'constants/iron-session';
@@ -13,6 +14,9 @@ import selectDecks from 'lib/api/selectDecks';
 import { Deck } from 'types/supabase';
 import useIsMounted from 'utils/useIsMounted';
 import { useAuth } from 'utils/useAuth';
+import useGun from 'utils/useGun';
+import { encryptWithLit } from 'utils/encryption';
+import createOnboardingNotes from 'utils/createOnboardingNotes';
 import { AuthSig } from 'types/lit';
 import HomeHeader from 'components/home/HomeHeader';
 import RequestDeckAccess from 'components/home/RequestDeckAccess';
@@ -23,6 +27,7 @@ export default function AppHome() {
   const router = useRouter();
   const [{ data: accountData }] = useAccount();
   const { user, isLoaded, signOut } = useAuth();
+  const { getUser, createUser, putDeckKeys, authenticate, logout } = useGun();
   const { data: decks } = useSWR(user ? 'decks' : null, () => selectDecks(user?.id), { revalidateOnFocus: false });
   const [requestingAccess, setRequestingAccess] = useState<boolean>(false);
   const [creatingDeck, setCreatingDeck] = useState<boolean>(false);
@@ -50,18 +55,73 @@ export default function AppHome() {
   }, [accountData?.connector, signOut]);
 
   const createNewDeck = async (deckName: string) => {
-    if (!user) return;
+    if (!user || !process.env.NEXT_PUBLIC_APP_ACCESS_KEY_PAIR) return;
+    // TODO: try/catch or other error handling
+    // TODO: does this belong in some hook?
 
-    const deck = await insertDeck({ user_id: user.id, deck_name: deckName });
+    const deckId = uuidv4();
+    console.log('deckId', deckId);
+    const deckKeyPair = await createUser();
+    const accessControlConditions = [
+      {
+        contractAddress: '',
+        standardContractType: '',
+        chain: 'ethereum',
+        method: '',
+        parameters: [':userAddress'],
+        returnValueTest: {
+          comparator: '=',
+          value: user.id,
+        },
+      },
+    ];
+    const [encryptedStringBase64, encryptedSymmetricKeyBase64] = await encryptWithLit(
+      JSON.stringify(deckKeyPair),
+      accessControlConditions,
+    );
 
-    if (!deck) {
-      toast.error('There was an error creating the DECK');
-      return;
+    await authenticate(JSON.parse(process.env.NEXT_PUBLIC_APP_ACCESS_KEY_PAIR));
+    // TODO: Do I need both of these?
+    await getUser()
+      ?.get(`deck/${deckId}`)
+      .put({
+        id: deckId,
+        name: deckName,
+        encryptedStringBase64,
+        encryptedSymmetricKeyBase64,
+        accessControlConditions: JSON.stringify(accessControlConditions),
+      })
+      .then();
+    await getUser()?.get('decks').get(deckId).put(user.id).then();
+
+    // RE: indexing
+    // https://github.com/rococtz/gun_examples
+    // await getUser()?.get('decks').get(user.id).put(ref).then();
+
+    // await logout();
+    await authenticate(deckKeyPair);
+
+    const onboardingNotes = createOnboardingNotes();
+    console.log(onboardingNotes);
+    // TODO: the arrays in content will break this?
+    // util functions in useGun?
+    // https://dev.to/negue/working-with-graph-structures-2006
+    // https://github.com/amark/gun/issues/231
+    // JSON.stringify?
+    // set?
+    // serialize?
+    for (const note of onboardingNotes) {
+      await getUser()?.get('notes').get(note.id).put(note).then();
     }
 
-    toast.success(`Successfully created ${deck.deck_name}`);
-    setCreatingDeck(false);
-    router.push(`/app/${deck.id}`);
+    // toast.success(`Successfully created ${deckName}`);
+    // setCreatingDeck(false);
+    // router.push(`/app/${deckId}`);
+
+    // if (!deck) {
+    //   toast.error('There was an error creating the DECK');
+    //   return;
+    // }
   };
 
   const verifyAccess = async (requestedDeck: string) => {
@@ -145,6 +205,31 @@ export default function AppHome() {
               ) : (
                 <Button onClick={() => setRequestingAccess(true)}>Join a DECK</Button>
               )}
+              <Button
+                onClick={async () => {
+                  if (!process.env.NEXT_PUBLIC_APP_ACCESS_KEY_PAIR) return;
+                  // const deckId = uuidv4();
+                  console.log(getUser()?.is?.pub);
+                  // TODO: won't be able to use this in getServerSideProps
+                  // best way to immediately redirect to user's deck?
+
+                  // https://stackoverflow.com/questions/38665394/duplicate-console-log-output-of-gun-map-when-using-gundb
+                  await authenticate(JSON.parse(process.env.NEXT_PUBLIC_APP_ACCESS_KEY_PAIR));
+                  getUser()
+                    ?.get('decks')
+                    .map()
+                    .once((userId, deckId): any => console.log(`${deckId} is owned by ${userId}`));
+
+                  // TODO: get deck, decrypt it, use the keypair
+                  // await authenticate(deckKeyPair);
+                  // console.log(getUser()?.is?.pub);
+                  // getUser()?.get('notes').map().once((x, y) => console.log('notes', x, y));
+
+                  // await putDeckKeys();
+                }}
+              >
+                Test Gun
+              </Button>
             </div>
           </div>
         </div>
@@ -155,11 +240,12 @@ export default function AppHome() {
 
 export const getServerSideProps = withIronSessionSsr(async function ({ req }) {
   const { user } = req.session;
-  const decks = await selectDecks(user?.id);
+  // const decks = await selectDecks(user?.id);
 
-  if (decks.length) {
-    return { redirect: { destination: `/app/${decks[decks.length - 1].id}`, permanent: false } };
-  } else {
-    return user ? { props: {} } : { redirect: { destination: '/', permanent: false } };
-  }
+  // if (decks.length) {
+  //   return { redirect: { destination: `/app/${decks[decks.length - 1].id}`, permanent: false } };
+  // } else {
+  //   return user ? { props: {} } : { redirect: { destination: '/', permanent: false } };
+  // }
+  return user ? { props: {} } : { redirect: { destination: '/', permanent: false } };
 }, ironOptions);

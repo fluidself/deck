@@ -87,24 +87,24 @@ function useProvideAuth(): AuthContextType {
       });
       if (!verificationResponse.ok) throw new Error('Error verifying message');
 
-      // await initUser();
-      const userRes = await fetch('/api/user');
-      const { user } = await userRes.json();
+      await initUser();
+      // const userRes = await fetch('/api/user');
+      // const { user } = await userRes.json();
 
-      const accountExists = await checkIfAccountExists(user.id);
-      console.log('accountExists', accountExists);
+      // const accountExists = await checkIfAccountExists(user.id);
+      // console.log('accountExists', accountExists);
 
-      if (accountExists) {
-        const loginRes = await login(user);
-        console.log('loginRes', loginRes);
-      } else {
-        const success = await createUser(user);
-        console.log('createUserRes', success);
-        if (success) {
-          const loginRes = await login(user);
-          console.log('loginRes', loginRes);
-        }
-      }
+      // if (accountExists) {
+      //   const loginRes = await login(user);
+      //   console.log('loginRes', loginRes);
+      // } else {
+      //   const success = await createUser(user);
+      //   console.log('createUserRes', success);
+      //   if (success) {
+      //     const loginRes = await login(user);
+      //     console.log('loginRes', loginRes);
+      //   }
+      // }
 
       setSigningIn(false);
       router.push('/app');

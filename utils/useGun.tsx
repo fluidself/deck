@@ -10,7 +10,9 @@
 import axios, { CancelTokenSource } from 'axios';
 import React, { createContext, useContext, useRef, useEffect, useState } from 'react';
 // import { Layer, Box, Text } from 'grommet';
-import type { IGunChainReference } from 'gun/types/chain';
+// import type { IGunChain } from 'gun/types/gun';
+
+import type { IGunUserInstance, ISEAPair } from 'gun/types/sea';
 // import type { IGunCryptoKeyPair } from 'gun/types/types';
 import Gun from 'gun/gun';
 import SEA from 'gun/sea';
@@ -35,17 +37,19 @@ interface Props {
 }
 
 interface ContextValue {
-  getGun: () => IGunChainReference | undefined;
-  getUser: () => IGunChainReference | undefined;
+  getGun: () => any;
+  getUser: () => IGunUserInstance | undefined;
   getCertificate: () => string | undefined;
   setCertificate: (cert: string) => void;
   getAccessToken: () => string | undefined;
   setAccessToken: (token: string) => void;
   checkIfAccountExists: (id: string) => Promise<any>;
   login: (value: any) => Promise<any>;
+  authenticate: (pair: ISEAPair) => Promise<any>;
   logout: () => void;
-  // createUser: () => Promise<any>;
-  createUser: (value: any) => Promise<any>;
+  createUser: () => Promise<any>;
+  putDeckKeys: () => Promise<any>;
+  // createUser: (value: any) => Promise<any>;
   // triggerReauthentication: (username: string) => Promise<void>;
   isReady: boolean;
   isAuthenticated: boolean;
@@ -62,9 +66,11 @@ const GunContext = createContext<ContextValue>({
   setAccessToken: () => {},
   checkIfAccountExists: () => Promise.resolve(),
   login: () => Promise.resolve(),
+  authenticate: () => Promise.resolve(),
   logout: () => {},
   // createUser: () => Promise.resolve(),
   createUser: () => Promise.resolve(),
+  putDeckKeys: () => Promise.resolve(),
   // triggerReauthentication: () => Promise.resolve(),
   isReady: false,
   isAuthenticated: false,
@@ -72,8 +78,8 @@ const GunContext = createContext<ContextValue>({
 });
 
 export const GunProvider = ({ children, sessionUser }: Props) => {
-  const gunRef = useRef<IGunChainReference>();
-  const userRef = useRef<IGunChainReference>();
+  const gunRef = useRef<any>();
+  const userRef = useRef<any>();
   const certificateRef = useRef<string>();
   const accessTokenRef = useRef<string>();
   const reauthenticationPromiseRef = useRef<{
@@ -101,7 +107,7 @@ export const GunProvider = ({ children, sessionUser }: Props) => {
       if (!gunRef.current) {
         // @ts-ignore
         Gun.on('opt', ctx => {
-          if (ctx.once) return;
+          // if (ctx.once) return;
 
           ctx.on('out', function (msg: any) {
             // @ts-ignore
@@ -203,7 +209,7 @@ export const GunProvider = ({ children, sessionUser }: Props) => {
 
   const checkIfAccountExists = async (id: string) => {
     return new Promise(resolve => {
-      gunRef.current!.get(`~@${id}`).once(data => {
+      gunRef.current!.get(`~@${id}`).once((data: any) => {
         console.log('checkIfAccountExists', data);
         if (typeof data !== 'undefined') {
           if (data.err) console.error(data.err);
@@ -216,18 +222,55 @@ export const GunProvider = ({ children, sessionUser }: Props) => {
     });
   };
 
-  const createUser = async (user: { id: string; gun_key: string }) => {
-    console.log('createUser', user);
+  const createUser = async () => {
+    return new Promise(async resolve => {
+      const keyPair: ISEAPair = await SEA.pair();
 
-    return new Promise((resolve, reject) => {
-      gunRef.current!.user().create(user.id, user.gun_key, ({ err, pub }: any) => {
-        // console.log(err, pub);
+      await new Promise(async resolve => gunRef.current!.user().create(keyPair, resolve));
+      resolve(keyPair);
+      // gunRef.current!.user().auth(keyPair, ({ err, sea }: any) => resolve(sea.pub));
+    });
+  };
+
+  const putDeckKeys = async () => {
+    console.log(process.env.NEXT_PUBLIC_APP_ACCESS_KEY_PAIR);
+    // await gunRef.current!.get('#spacenamehere213123').get('uuid-asda39-123asd-asd').put('encrypted-string-here').then();
+    // await gunRef
+    //   .current!.get('#spacenamehere213123')
+    //   .get('uuid-asda39-123asd-asd')
+    //   .map()
+    //   .once((data: any) => {
+    //     console.log(data);
+    //     gunRef.current!.get(data).once((d: any) => console.log(d));
+    //   });
+  };
+
+  // const createUser = async (user: { id: string; gun_key: string }) => {
+  //   console.log('createUser', user);
+
+  //   return new Promise((resolve, reject) => {
+  //     gunRef.current!.user().create(user.id, user.gun_key, ({ err, pub }: any) => {
+  //       // console.log(err, pub);
+  //       if (err) {
+  //         console.error(err);
+  //         reject(false);
+  //       } else {
+  //         resolve(true);
+  //       }
+  //     });
+  //   });
+  // };
+
+  const authenticate = async (pair: ISEAPair) => {
+    await logout();
+
+    return new Promise<void>((resolve, reject) => {
+      gunRef.current!.user().auth(pair, ({ err, sea }: any) => {
         if (err) {
-          console.error(err);
-          reject(false);
-        } else {
-          resolve(true);
+          reject(new Error(err));
         }
+
+        resolve();
       });
     });
   };
@@ -264,9 +307,9 @@ export const GunProvider = ({ children, sessionUser }: Props) => {
 
     setIsAuthenticated(false);
 
-    await fetch('/api/signout', {
-      method: 'POST',
-    });
+    // await fetch('/api/signout', {
+    //   method: 'POST',
+    // });
   };
 
   // const triggerReauthentication = (username: string): Promise<void> => {
@@ -330,7 +373,9 @@ export const GunProvider = ({ children, sessionUser }: Props) => {
         checkIfAccountExists,
         logout,
         login,
+        authenticate,
         createUser,
+        putDeckKeys,
         // createUser: async value => {
         //   console.log(value);
         //   setTimeout(() => {
@@ -367,3 +412,17 @@ export default function useGun() {
 
   return context;
 }
+
+// https://github.com/amark/gun/wiki/Snippets#saving-arrays-in-gun
+export const getIndexedObjectFromArray = (arr: any[]) => {
+  return arr.reduce((acc, item) => {
+    return {
+      ...acc,
+      [item.id]: item,
+    };
+  }, {});
+};
+
+export const getArrayFromIndexedObject = (indexedObj: any) => {
+  return Object.values(indexedObj);
+};
