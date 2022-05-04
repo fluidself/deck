@@ -46,20 +46,29 @@ export async function encryptWithLit(
 }
 
 export async function decryptWithLit(
-  encryptedString: Uint8Array,
-  encryptedSymmetricKey: Uint8Array,
+  // encryptedString: Uint8Array,
+  // encryptedSymmetricKey: Uint8Array,
+  encryptedString: string,
+  encryptedSymmetricKey: string,
   accessControlConditions: Array<Object>,
   chain: string = 'ethereum',
 ): Promise<string> {
+  const decodedString = decodeb64(encryptedString);
+  const decodedSymmetricKey = decodeb64(encryptedSymmetricKey);
+
+  if (!decodedString || !decodedSymmetricKey) {
+    throw new Error('Decryption failed');
+  }
+
   const authSig: AuthSig = await LitJsSdk.checkAndSignAuthMessage({ chain });
-  const toDecrypt = uint8ArrayToString(encryptedSymmetricKey, 'base16');
+  const toDecrypt = uint8ArrayToString(decodedSymmetricKey, 'base16');
   const decryptedSymmetricKey = await window.litNodeClient.getEncryptionKey({
     accessControlConditions,
     toDecrypt,
     chain,
     authSig,
   });
-  const decryptedString = await LitJsSdk.decryptString(new Blob([encryptedString]), decryptedSymmetricKey);
+  const decryptedString = await LitJsSdk.decryptString(new Blob([decodedString]), decryptedSymmetricKey);
 
   return decryptedString;
 }
@@ -69,10 +78,13 @@ export async function decodeFromB64(encryptedString: string, encryptedSymmetricK
     const decodedString = decodeb64(encryptedString);
     const decodedSymmetricKey = decodeb64(encryptedSymmetricKey);
 
-    return { success: true, decodedString, decodedSymmetricKey };
+    if (!decodedString || !decodedSymmetricKey) {
+      throw new Error('Decryption failed');
+    }
+
+    return { decodedString, decodedSymmetricKey };
   } catch (error) {
     console.error(error);
-    return { success: false };
   }
 }
 

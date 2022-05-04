@@ -43,8 +43,7 @@ interface ContextValue {
   setCertificate: (cert: string) => void;
   getAccessToken: () => string | undefined;
   setAccessToken: (token: string) => void;
-  checkIfAccountExists: (id: string) => Promise<any>;
-  login: (value: any) => Promise<any>;
+  // checkIfAccountExists: (id: string) => Promise<any>;
   authenticate: (pair: ISEAPair) => Promise<any>;
   logout: () => void;
   createUser: () => Promise<any>;
@@ -64,11 +63,9 @@ const GunContext = createContext<ContextValue>({
   setCertificate: () => {},
   getAccessToken: () => undefined,
   setAccessToken: () => {},
-  checkIfAccountExists: () => Promise.resolve(),
-  login: () => Promise.resolve(),
+  // checkIfAccountExists: () => Promise.resolve(),
   authenticate: () => Promise.resolve(),
   logout: () => {},
-  // createUser: () => Promise.resolve(),
   createUser: () => Promise.resolve(),
   putDeckKeys: () => Promise.resolve(),
   // triggerReauthentication: () => Promise.resolve(),
@@ -135,6 +132,7 @@ export const GunProvider = ({ children, sessionUser }: Props) => {
 
         // create user
         userRef.current = gunRef.current.user().recall({ sessionStorage: true });
+        // userRef.current = gunRef.current.user();
 
         setIsReady(true);
       }
@@ -207,20 +205,20 @@ export const GunProvider = ({ children, sessionUser }: Props) => {
   //   };
   // }, [sessionUser]);
 
-  const checkIfAccountExists = async (id: string) => {
-    return new Promise(resolve => {
-      gunRef.current!.get(`~@${id}`).once((data: any) => {
-        console.log('checkIfAccountExists', data);
-        if (typeof data !== 'undefined') {
-          if (data.err) console.error(data.err);
+  // const checkIfAccountExists = async (id: string) => {
+  //   return new Promise(resolve => {
+  //     gunRef.current!.get(`~@${id}`).once((data: any) => {
+  //       console.log('checkIfAccountExists', data);
+  //       if (typeof data !== 'undefined') {
+  //         if (data.err) console.error(data.err);
 
-          resolve(true);
-        } else {
-          resolve(false);
-        }
-      });
-    });
-  };
+  //         resolve(true);
+  //       } else {
+  //         resolve(false);
+  //       }
+  //     });
+  //   });
+  // };
 
   const createUser = async () => {
     return new Promise(async resolve => {
@@ -262,39 +260,16 @@ export const GunProvider = ({ children, sessionUser }: Props) => {
   // };
 
   const authenticate = async (pair: ISEAPair) => {
+    if (!gunRef.current) return;
     await logout();
 
     return new Promise<void>((resolve, reject) => {
-      gunRef.current!.user().auth(pair, ({ err, sea }: any) => {
+      gunRef.current.user().auth(pair, ({ err, sea }: any) => {
         if (err) {
           reject(new Error(err));
         }
 
         resolve();
-      });
-    });
-  };
-
-  const login = async (user: { id: string; gun_key: string }) => {
-    // await logout();
-
-    // FIXME .auth callback sometimes works, sometimes doesn't.
-    // can't figure out why--maybe has to do with peers?
-    // maybe https://github.com/amark/gun/issues/944?
-    // Let .on('auth') callback do most of the work
-    return new Promise((resolve, reject) => {
-      gunRef.current!.user().auth(user.id, user.gun_key, ({ err, sea }: any) => {
-        // console.log(err, sea);
-        if (err) {
-          reject(new Error(err));
-        } else {
-          const gunUser: GunUser = {
-            id: user.id,
-            pub: sea.pub,
-          };
-
-          resolve(gunUser);
-        }
       });
     });
   };
@@ -370,19 +345,11 @@ export const GunProvider = ({ children, sessionUser }: Props) => {
         isReady,
         isAuthenticated,
         needsReauthentication,
-        checkIfAccountExists,
+        // checkIfAccountExists,
         logout,
-        login,
         authenticate,
         createUser,
         putDeckKeys,
-        // createUser: async value => {
-        //   console.log(value);
-        //   setTimeout(() => {
-        //     return 'createUser callback';
-        //   }, 1000);
-        //   // return 'createUser';
-        // },
         // triggerReauthentication,
       }}
     >

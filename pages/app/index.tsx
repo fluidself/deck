@@ -15,7 +15,7 @@ import { Deck } from 'types/supabase';
 import useIsMounted from 'utils/useIsMounted';
 import { useAuth } from 'utils/useAuth';
 import useGun from 'utils/useGun';
-import { encryptWithLit } from 'utils/encryption';
+import { encryptWithLit, decryptWithLit } from 'utils/encryption';
 import createOnboardingNotes from 'utils/createOnboardingNotes';
 import { AuthSig } from 'types/lit';
 import HomeHeader from 'components/home/HomeHeader';
@@ -61,7 +61,8 @@ export default function AppHome() {
 
     const deckId = uuidv4();
     console.log('deckId', deckId);
-    const deckKeyPair = await createUser();
+    const deckKeypair = await createUser();
+    console.log('deckKeypair', deckKeypair);
     const accessControlConditions = [
       {
         contractAddress: '',
@@ -75,8 +76,9 @@ export default function AppHome() {
         },
       },
     ];
+    // TODO: drop the 'Base64' suffix
     const [encryptedStringBase64, encryptedSymmetricKeyBase64] = await encryptWithLit(
-      JSON.stringify(deckKeyPair),
+      JSON.stringify(deckKeypair),
       accessControlConditions,
     );
 
@@ -99,10 +101,10 @@ export default function AppHome() {
     // await getUser()?.get('decks').get(user.id).put(ref).then();
 
     // await logout();
-    await authenticate(deckKeyPair);
+    await authenticate(deckKeypair);
 
+    // TODO: encrypt with SEA pair
     const onboardingNotes = createOnboardingNotes();
-    console.log(onboardingNotes);
     // TODO: the arrays in content will break this?
     // util functions in useGun?
     // https://dev.to/negue/working-with-graph-structures-2006
@@ -114,9 +116,9 @@ export default function AppHome() {
       await getUser()?.get('notes').get(note.id).put(note).then();
     }
 
-    // toast.success(`Successfully created ${deckName}`);
-    // setCreatingDeck(false);
-    // router.push(`/app/${deckId}`);
+    toast.success(`Successfully created ${deckName}`);
+    setCreatingDeck(false);
+    router.push(`/app/${deckId}`);
 
     // if (!deck) {
     //   toast.error('There was an error creating the DECK');
@@ -209,22 +211,36 @@ export default function AppHome() {
                 onClick={async () => {
                   if (!process.env.NEXT_PUBLIC_APP_ACCESS_KEY_PAIR) return;
                   // const deckId = uuidv4();
-                  console.log(getUser()?.is?.pub);
                   // TODO: won't be able to use this in getServerSideProps
                   // best way to immediately redirect to user's deck?
 
                   // https://stackoverflow.com/questions/38665394/duplicate-console-log-output-of-gun-map-when-using-gundb
                   await authenticate(JSON.parse(process.env.NEXT_PUBLIC_APP_ACCESS_KEY_PAIR));
-                  getUser()
-                    ?.get('decks')
-                    .map()
-                    .once((userId, deckId): any => console.log(`${deckId} is owned by ${userId}`));
+                  console.log('logged in as: ', getUser()?.is?.pub);
+                  // getUser()
+                  //   ?.get('decks')
+                  //   .map()
+                  //   .once((userId, deckId): any => console.log(`${deckId} is owned by ${userId}`));
 
-                  // TODO: get deck, decrypt it, use the keypair
-                  // await authenticate(deckKeyPair);
-                  // console.log(getUser()?.is?.pub);
-                  // getUser()?.get('notes').map().once((x, y) => console.log('notes', x, y));
+                  const deckId = 'faca5951-73dd-42a1-9ac4-6384682e9a47';
+                  const deckToAccess = await getUser()?.get(`deck/${deckId}`).then();
+                  // console.log(deckToAccess);
 
+                  const { encryptedStringBase64, encryptedSymmetricKeyBase64, accessControlConditions } = deckToAccess;
+                  const decryptedDeckKeypair = await decryptWithLit(
+                    encryptedStringBase64,
+                    encryptedSymmetricKeyBase64,
+                    JSON.parse(accessControlConditions),
+                  );
+
+                  await authenticate(JSON.parse(decryptedDeckKeypair));
+                  console.log('logged in as: ', getUser()?.is?.pub);
+                  // getUser()
+                  //   ?.get('notes')
+                  //   .map()
+                  //   .once((note, noteId) => console.log(noteId));
+
+                  router.push(`/app/${deckId}`);
                   // await putDeckKeys();
                 }}
               >

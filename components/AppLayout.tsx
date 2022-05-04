@@ -11,6 +11,7 @@ import { Note, Deck } from 'types/supabase';
 import { ProvideCurrentDeck } from 'utils/useCurrentDeck';
 import useHotkeys from 'utils/useHotkeys';
 import { useAuth } from 'utils/useAuth';
+import useGun from 'utils/useGun';
 import { isMobile } from 'utils/device';
 import Sidebar from './sidebar/Sidebar';
 import FindOrCreateModal from './FindOrCreateModal';
@@ -30,6 +31,7 @@ export default function AppLayout(props: Props) {
   } = router;
   const { user, isLoaded, signOut } = useAuth();
   const [{ data: accountData }] = useAccount();
+  const { isReady, isAuthenticated, getUser, authenticate } = useGun();
   const [isPageLoaded, setIsPageLoaded] = useState(false);
 
   useEffect(() => {
@@ -54,6 +56,7 @@ export default function AppLayout(props: Props) {
   const setNotes = useStore(state => state.setNotes);
   const setNoteTree = useStore(state => state.setNoteTree);
   const setDeckId = useStore(state => state.setDeckId);
+
   const initData = useCallback(async () => {
     if (!deckId || typeof deckId !== 'string') {
       return;
@@ -61,11 +64,19 @@ export default function AppLayout(props: Props) {
 
     setDeckId(deckId);
 
-    const { data: notes } = await supabase
-      .from<Note>('notes')
-      .select('id, title, content, created_at, updated_at')
-      .eq('deck_id', deckId)
-      .order('title');
+    console.log('isAuthenticated', isAuthenticated);
+    console.log('logged in as: ', getUser()?.is?.pub);
+
+    const notes: Note[] = [];
+    await getUser()
+      ?.get('notes')
+      .map()
+      .once((note, noteId) => {
+        // delete note._;
+        notes.push({ ...note, content: JSON.parse(note.content) });
+      })
+      .then();
+    // console.log(notes);
 
     // Redirect to most recent note or first note in database
     if (router.pathname.match(/^\/app\/[^/]+$/i)) {
@@ -91,8 +102,10 @@ export default function AppLayout(props: Props) {
     }, {});
     setNotes(notesAsObj);
 
+    // TODO: note tree in Gun
     // Set note tree
-    const { data: deckData } = await supabase.from<Deck>('decks').select('note_tree').eq('id', deckId).single();
+    // const { data: deckData } = await supabase.from<Deck>('decks').select('note_tree').eq('id', deckId).single();
+    const deckData = { note_tree: null };
 
     if (deckData?.note_tree) {
       const noteTree: NoteTreeItem[] = [...deckData.note_tree];
@@ -119,11 +132,11 @@ export default function AppLayout(props: Props) {
     if (isLoaded && !user) {
       // Redirect to root page if there is no user logged in
       router.replace('/');
-    } else if (!isPageLoaded && isLoaded && user) {
+    } else if (!isPageLoaded && isLoaded && user && isReady) {
       // Initialize data if there is a user and the data has not been initialized yet
       initData();
     }
-  }, [router, user, isLoaded, isPageLoaded, initData]);
+  }, [router, user, isLoaded, isPageLoaded, initData, isReady]);
 
   const [isFindOrCreateModalOpen, setIsFindOrCreateModalOpen] = useState(false);
   // const [isSettingsOpen, setIsSettingsOpen] = useState(false);
@@ -150,33 +163,34 @@ export default function AppLayout(props: Props) {
     }
   }, [setIsSidebarOpen, setIsPageStackingOn, hasHydrated]);
 
-  useEffect(() => {
-    if (!deckId) {
-      return;
-    }
+  // useEffect(() => {
+  //   if (!deckId) {
+  //     return;
+  //   }
 
-    // Subscribe to changes on the notes table for the current DECK
-    const subscription = supabase
-      .from<Note>(`notes:deck_id=eq.${deckId}`)
-      .on('*', payload => {
-        if (payload.eventType === 'INSERT') {
-          upsertNote(payload.new);
-        } else if (payload.eventType === 'UPDATE') {
-          // Don't update the note if it is currently open
-          const openNoteIds = store.getState().openNoteIds;
-          if (!openNoteIds.includes(payload.new.id)) {
-            updateNote(payload.new);
-          }
-        } else if (payload.eventType === 'DELETE') {
-          deleteNote(payload.old.id);
-        }
-      })
-      .subscribe();
+  //   // Subscribe to changes on the notes table for the current DECK
+  //   // TODO: https://gun.eco/docs/API#-a-name-on-a-gun-on-callback-option-
+  //   const subscription = supabase
+  //     .from<Note>(`notes:deck_id=eq.${deckId}`)
+  //     .on('*', payload => {
+  //       if (payload.eventType === 'INSERT') {
+  //         upsertNote(payload.new);
+  //       } else if (payload.eventType === 'UPDATE') {
+  //         // Don't update the note if it is currently open
+  //         const openNoteIds = store.getState().openNoteIds;
+  //         if (!openNoteIds.includes(payload.new.id)) {
+  //           updateNote(payload.new);
+  //         }
+  //       } else if (payload.eventType === 'DELETE') {
+  //         deleteNote(payload.old.id);
+  //       }
+  //     })
+  //     .subscribe();
 
-    return () => {
-      subscription.unsubscribe();
-    };
-  }, [deckId, upsertNote, updateNote, deleteNote]);
+  //   return () => {
+  //     subscription.unsubscribe();
+  //   };
+  // }, [deckId, upsertNote, updateNote, deleteNote]);
 
   const hotkeys = useMemo(
     () => [

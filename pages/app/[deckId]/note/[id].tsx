@@ -131,8 +131,9 @@ const getHighlightedPath = (url: string): { index: number; path: Path } | null =
 
 export const getServerSideProps = withIronSessionSsr(async function ({ params, req }) {
   const { user, allowedDeck } = req.session;
-  const deckId = params?.deckId;
-  const authorized = await checkProtectedPageAuth(deckId, user, allowedDeck);
+  // const deckId = params?.deckId;
+  // const authorized = await checkProtectedPageAuth(deckId, user, allowedDeck);
+  const authorized = user ? true : false;
 
   return authorized ? { props: {} } : { redirect: { destination: '/', permanent: false } };
 }, ironOptions);
