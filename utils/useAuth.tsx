@@ -3,13 +3,11 @@ import type { ReactNode } from 'react';
 import { useRouter } from 'next/router';
 import { useConnect } from 'wagmi';
 import { SiweMessage } from 'siwe';
-import useGun from 'utils/useGun';
 import { User } from 'types/supabase';
 
 type AuthContextType = {
   isLoaded: boolean;
   user: User | null;
-  // signIn: (address: string, chainId: string) => Promise<void>;
   signIn: () => Promise<void>;
   signOut: () => Promise<void>;
 };
@@ -77,23 +75,6 @@ function useProvideAuth(): AuthContextType {
       if (!verificationResponse.ok) throw new Error('Error verifying message');
 
       await initUser();
-      // const userRes = await fetch('/api/user');
-      // const { user } = await userRes.json();
-
-      // const accountExists = await checkIfAccountExists(user.id);
-      // console.log('accountExists', accountExists);
-
-      // if (accountExists) {
-      //   const loginRes = await login(user);
-      //   console.log('loginRes', loginRes);
-      // } else {
-      //   const success = await createUser(user);
-      //   console.log('createUserRes', success);
-      //   if (success) {
-      //     const loginRes = await login(user);
-      //     console.log('loginRes', loginRes);
-      //   }
-      // }
 
       setSigningIn(false);
       router.push('/app');

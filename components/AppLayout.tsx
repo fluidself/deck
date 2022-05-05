@@ -27,8 +27,6 @@ type Props = {
   className?: string;
 };
 
-let storageChanged = false;
-
 export default function AppLayout(props: Props) {
   const { children, className = '' } = props;
   const router = useRouter();
@@ -81,10 +79,13 @@ export default function AppLayout(props: Props) {
       return;
     }
 
+    // TODO: needed?
     setDeckId(deckId);
 
     const notes: Note[] = Object.values(dbNotes);
+    // console.log('initData', notes);
 
+    // TODO: consistently fails because notes empty.
     // Redirect to most recent note or first note in database
     if (router.pathname.match(/^\/app\/[^/]+$/i)) {
       const openNoteIds = store.getState().openNoteIds;
@@ -138,11 +139,11 @@ export default function AppLayout(props: Props) {
     if (isLoaded && !user) {
       // Redirect to root page if there is no user logged in
       router.replace('/');
-    } else if (!isPageLoaded && isLoaded && user && Object.keys(dbNotes).length) {
+    } else if (!isPageLoaded && isLoaded && user) {
       // Initialize data if there is a user and the data has not been initialized yet
       initData();
     }
-  }, [router, user, isLoaded, isPageLoaded, initData, isReady, dbNotes]);
+  }, [router, user, isLoaded, isPageLoaded, initData, dbNotes]);
 
   const [isFindOrCreateModalOpen, setIsFindOrCreateModalOpen] = useState(false);
   // const [isSettingsOpen, setIsSettingsOpen] = useState(false);
@@ -194,8 +195,8 @@ export default function AppLayout(props: Props) {
     getUser()
       ?.get('notes')
       .map()
-      .on((note: any) => {
-        // console.log('on data', note, id);
+      .on((note: any, id: string) => {
+        console.log('on data', note, id);
         if (note) {
           setDbNotes(dbNotes => ({
             ...dbNotes,
@@ -224,13 +225,13 @@ export default function AppLayout(props: Props) {
   // editor/plugins/withAutoMarkdown/handleInlineShortcuts.ts
   useEffect(() => {
     const interval = setInterval(() => {
-      if (storageChanged) {
+      if (localStorage.getItem('deck-note-upsert-id')) {
         const upsertId = localStorage.getItem('deck-note-upsert-id');
         const upsertTitle = localStorage.getItem('deck-note-upsert-title');
         if (!upsertId || !upsertTitle) return;
-        upsertDbNote(upsertTitle, upsertId);
         localStorage.removeItem('deck-note-upsert-id');
         localStorage.removeItem('deck-note-upsert-title');
+        upsertDbNote(upsertTitle, upsertId);
       }
     }, 4000);
 
@@ -310,8 +311,4 @@ const removeNonexistentNotes = (tree: NoteTreeItem[], notes: Notes) => {
       removeNonexistentNotes(item.children, notes);
     }
   }
-};
-
-export const toggleStorageChanged = () => {
-  storageChanged = true;
 };

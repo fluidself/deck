@@ -5,7 +5,6 @@ import { isMark } from 'editor/formatting';
 import { store } from 'lib/store';
 // import upsertNote from 'lib/api/upsertNote';
 import { caseInsensitiveStringEqual } from 'utils/string';
-import { toggleStorageChanged } from 'components/AppLayout';
 import { deleteText } from 'editor/transforms';
 import handleMark from './handleMark';
 import handleExternalLink from './handleExternalLink';
@@ -122,7 +121,6 @@ export const getOrCreateNoteId = (noteTitle: string): string | null => {
     noteId = uuidv4();
     localStorage.setItem('deck-note-upsert-id', noteId);
     localStorage.setItem('deck-note-upsert-title', noteTitle);
-    toggleStorageChanged();
   }
 
   return noteId;

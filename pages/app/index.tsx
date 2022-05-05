@@ -37,6 +37,7 @@ export default function AppHome() {
   const isMounted = useIsMounted();
 
   useEffect(() => {
+    // TODO: clean / DRY up and reuse for landing?
     const lookForUserDeck = async () => {
       if (!process.env.NEXT_PUBLIC_APP_ACCESS_KEY_PAIR || !user?.id) return;
       await authenticate(JSON.parse(process.env.NEXT_PUBLIC_APP_ACCESS_KEY_PAIR));
@@ -66,7 +67,7 @@ export default function AppHome() {
 
           await authenticate(JSON.parse(decryptedDeckKeypair));
 
-          router.push(`/app/${deckId}`);
+          router.replace(`/app/${deckId}`);
         }
       }
 

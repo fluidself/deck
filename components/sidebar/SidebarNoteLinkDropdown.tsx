@@ -2,7 +2,7 @@ import { memo, useCallback, useRef, useState } from 'react';
 import { Menu } from '@headlessui/react';
 import { IconCornerDownRight, IconDots, IconTrash } from '@tabler/icons';
 import { usePopper } from 'react-popper';
-import { Note } from 'types/supabase';
+import { Note } from 'types/gun';
 import { DropdownItem } from 'components/Dropdown';
 import MoveToModal from 'components/MoveToModal';
 import NoteMetadata from 'components/NoteMetadata';
@@ -18,14 +18,8 @@ const SidebarNoteLinkDropdown = (props: Props) => {
   const { note, className } = props;
 
   const containerRef = useRef<HTMLButtonElement | null>(null);
-  const [popperElement, setPopperElement] = useState<HTMLDivElement | null>(
-    null
-  );
-  const { styles, attributes } = usePopper(
-    containerRef.current,
-    popperElement,
-    { placement: 'right-start' }
-  );
+  const [popperElement, setPopperElement] = useState<HTMLDivElement | null>(null);
+  const { styles, attributes } = usePopper(containerRef.current, popperElement, { placement: 'right-start' });
 
   const [isMoveToModalOpen, setIsMoveToModalOpen] = useState(false);
   const onMoveToClick = useCallback(() => setIsMoveToModalOpen(true), []);
