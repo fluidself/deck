@@ -11,8 +11,7 @@ export type NoteUpdate = PickPartial<Note, 'content' | 'title' | 'created_at' | 
 export default function useNotes() {
   const { isReady, isAuthenticated, getGun, getUser, reauthenticateDeck } = useGun();
   // const [notes, setNotes] = useState<any>({});
-  const [notes, setNotes] = useState<Note[]>([]);
-  const [notesReady, setNotesReady] = useState<boolean>(false);
+  // const [notesReady, setNotesReady] = useState<boolean>(false);
   const router = useRouter();
   const {
     query: { deckId },
@@ -28,15 +27,14 @@ export default function useNotes() {
   //     await getUser()
   //       ?.get('notes')
   //       .map()
-  //       .on(note => {
+  //       .once(note => {
   //         console.log(note);
-  //         // .once((note, noteId) => {
-  //         // TODO: sometimes only gets the last note
-  //         // delete note._;
-  //         notes.push({ ...note, content: JSON.parse(note.content) });
+  //         if (note) {
+  //           notes.push({ ...note, content: JSON.parse(note.content) });
+  //         }
   //       })
   //       .then();
-  //     console.log('getNotes', notes);
+  //     console.log('notes', notes);
   //     setNotes(notes);
   //     setNotesReady(true);
   //   };
@@ -182,8 +180,8 @@ export default function useNotes() {
   );
 
   return {
-    notes,
-    notesReady,
+    // notes,
+    // notesReady,
     getNotes,
     upsertNote,
     updateNote,

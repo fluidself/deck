@@ -5,7 +5,7 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/router';
 import { useAccount } from 'wagmi';
 import { v4 as uuidv4 } from 'uuid';
-import useSWR from 'swr';
+// import useSWR from 'swr';
 import { toast } from 'react-toastify';
 import { ironOptions } from 'constants/iron-session';
 import supabase from 'lib/supabase';
@@ -22,16 +22,59 @@ import HomeHeader from 'components/home/HomeHeader';
 import RequestDeckAccess from 'components/home/RequestDeckAccess';
 import ProvideDeckName from 'components/home/ProvideDeckName';
 import Button from 'components/home/Button';
+import PageLoading from 'components/PageLoading';
 
 export default function AppHome() {
   const router = useRouter();
   const [{ data: accountData }] = useAccount();
   const { user, isLoaded, signOut } = useAuth();
   const { getUser, createUser, authenticate, logout } = useGun();
-  const { data: decks } = useSWR(user ? 'decks' : null, () => selectDecks(user?.id), { revalidateOnFocus: false });
+  // const { data: decks } = useSWR(user ? 'decks' : null, () => selectDecks(user?.id), { revalidateOnFocus: false });
+  const [decks, setDecks] = useState<any>({});
   const [requestingAccess, setRequestingAccess] = useState<boolean>(false);
   const [creatingDeck, setCreatingDeck] = useState<boolean>(false);
+  const [lookingForDeck, setLookingForDeck] = useState<boolean>(true);
   const isMounted = useIsMounted();
+
+  useEffect(() => {
+    const lookForUserDeck = async () => {
+      if (!process.env.NEXT_PUBLIC_APP_ACCESS_KEY_PAIR || !user?.id) return;
+      await authenticate(JSON.parse(process.env.NEXT_PUBLIC_APP_ACCESS_KEY_PAIR));
+      const decks: any = {};
+      await getUser()
+        ?.get(`decks`)
+        .map()
+        .once((userId, deckId) => {
+          // TODO
+          if (typeof userId === 'string') {
+            decks[deckId] = userId;
+          }
+        })
+        .then();
+
+      for (const [deckId, userId] of Object.entries(decks)) {
+        if (userId === user.id) {
+          const deckToAccess = await getUser()?.get(`deck/${deckId}`).then();
+          if (!deckToAccess) return;
+          console.log(deckToAccess);
+          const { encryptedString, encryptedSymmetricKey, accessControlConditions } = deckToAccess;
+          const decryptedDeckKeypair = await decryptWithLit(
+            encryptedString,
+            encryptedSymmetricKey,
+            JSON.parse(accessControlConditions),
+          );
+
+          await authenticate(JSON.parse(decryptedDeckKeypair));
+
+          router.push(`/app/${deckId}`);
+        }
+      }
+
+      setLookingForDeck(false);
+    };
+
+    lookForUserDeck();
+  }, [user]);
 
   useEffect(() => {
     const initLit = async () => {
@@ -126,12 +169,12 @@ export default function AppHome() {
   const verifyAccess = async (requestedDeck: string) => {
     if (!requestedDeck) return;
 
-    if (decks?.find(deck => deck.id === requestedDeck)) {
-      toast.success('You own that DECK!');
-      setRequestingAccess(false);
-      router.push(`/app/${requestedDeck}`);
-      return;
-    }
+    // if (decks?.find(deck => deck.id === requestedDeck)) {
+    //   toast.success('You own that DECK!');
+    //   setRequestingAccess(false);
+    //   router.push(`/app/${requestedDeck}`);
+    //   return;
+    // }
 
     const { data: accessParams } = await supabase.from<Deck>('decks').select('access_params').eq('id', requestedDeck).single();
     if (!accessParams?.access_params) {
@@ -174,6 +217,10 @@ export default function AppHome() {
     }
   };
 
+  if (lookingForDeck) {
+    return <PageLoading />;
+  }
+
   return (
     <div id="app-container" className="h-screen font-display">
       <div className="flex flex-col w-full h-full bg-gray-900 text-gray-100">
@@ -207,21 +254,11 @@ export default function AppHome() {
               <Button
                 onClick={async () => {
                   if (!process.env.NEXT_PUBLIC_APP_ACCESS_KEY_PAIR) return;
-                  // const deckId = uuidv4();
-                  // TODO: won't be able to use this in getServerSideProps
-                  // best way to immediately redirect to user's deck?
-
-                  // https://stackoverflow.com/questions/38665394/duplicate-console-log-output-of-gun-map-when-using-gundb
                   await authenticate(JSON.parse(process.env.NEXT_PUBLIC_APP_ACCESS_KEY_PAIR));
                   console.log('logged in as: ', getUser()?.is?.pub);
-                  // getUser()
-                  //   ?.get('decks')
-                  //   .map()
-                  //   .once((userId, deckId): any => console.log(`${deckId} is owned by ${userId}`));
 
                   const deckId = '1ef1fc3b-563b-49e5-86c5-f3619989cf68';
                   const deckToAccess = await getUser()?.get(`deck/${deckId}`).then();
-                  // console.log(deckToAccess);
 
                   const { encryptedString, encryptedSymmetricKey, accessControlConditions } = deckToAccess;
                   const decryptedDeckKeypair = await decryptWithLit(
@@ -237,6 +274,13 @@ export default function AppHome() {
                 }}
               >
                 Test Gun
+              </Button>
+              <Button
+                onClick={async () => {
+                  console.log(decks);
+                }}
+              >
+                Test Decks storage
               </Button>
             </div>
           </div>

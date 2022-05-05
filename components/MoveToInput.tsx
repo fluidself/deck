@@ -7,6 +7,7 @@ import supabase from 'lib/supabase';
 import { store, useStore } from 'lib/store';
 import { Deck } from 'types/supabase';
 import { caseInsensitiveStringCompare } from 'utils/string';
+import useGun from 'utils/useGun';
 
 enum OptionType {
   NOTE,
@@ -29,6 +30,7 @@ type Props = {
 function MoveToInput(props: Props, ref: ForwardedRef<HTMLInputElement>) {
   const { noteId, onOptionClick: onOptionClickCallback, className = '' } = props;
   const { deck } = useCurrentDeck();
+  const { getUser } = useGun();
 
   const [inputText, setInputText] = useState('');
   const [selectedOptionIndex, setSelectedOptionIndex] = useState<number>(0);
@@ -77,10 +79,6 @@ function MoveToInput(props: Props, ref: ForwardedRef<HTMLInputElement>) {
 
   const onOptionClick = useCallback(
     async (option: Option) => {
-      if (!deck) {
-        return;
-      }
-
       onOptionClickCallback?.();
 
       if (option.type === OptionType.ROOT) {
@@ -91,9 +89,9 @@ function MoveToInput(props: Props, ref: ForwardedRef<HTMLInputElement>) {
         throw new Error(`Option type ${option.type} is not supported`);
       }
 
-      await supabase.from<Deck>('decks').update({ note_tree: store.getState().noteTree }).eq('id', deck.id);
+      await getUser()?.get('note_tree').put(JSON.stringify(store.getState().noteTree)).then();
     },
-    [deck, onOptionClickCallback, noteId, moveNoteTreeItem],
+    [onOptionClickCallback, noteId, moveNoteTreeItem],
   );
 
   const onKeyDown = useCallback(

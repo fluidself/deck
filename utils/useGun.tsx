@@ -3,6 +3,7 @@ import type { IGunUserInstance, ISEAPair } from 'gun/types/sea';
 import Gun from 'gun/gun';
 import SEA from 'gun/sea';
 import { encryptWithLit, decryptWithLit } from 'utils/encryption';
+import useIsMounted from './useIsMounted';
 
 interface GunUser {
   id: string;
@@ -63,6 +64,7 @@ export const GunProvider = ({ children, sessionUser }: Props) => {
   const [needsReauthentication, setNeedsReauthentication] =
     // string: username
     useState<string>();
+  const isMounted = useIsMounted();
 
   useEffect(() => {
     const initGun = async () => {
@@ -111,30 +113,32 @@ export const GunProvider = ({ children, sessionUser }: Props) => {
       }
 
       // @ts-ignore TODO
-      gunRef.current.on('auth', async ({ root, sea, err }) => {
-        console.debug('gun user authed', root, sea, err);
+      // gunRef.current.on('auth', async ({ root, sea, err }) => {
+      //   console.debug('gun user authed', root, sea, err);
 
-        const user: GunUser = {
-          id: await new Promise(resolve => {
-            gunRef.current
-              ?.get(`~${sea.pub}`)
-              .get('alias')
-              .once((v: any) => {
-                // @ts-ignore
-                resolve(v);
-              });
-          }),
-          pub: sea.pub,
-        };
+      //   const user: GunUser = {
+      //     id: await new Promise(resolve => {
+      //       gunRef.current
+      //         ?.get(`~${sea.pub}`)
+      //         .get('alias')
+      //         .once((v: any) => {
+      //           // @ts-ignore
+      //           resolve(v);
+      //         });
+      //     }),
+      //     pub: sea.pub,
+      //   };
 
-        if (!err) {
-          setIsAuthenticated(true);
-        }
-      });
+      //   if (!err) {
+      //     setIsAuthenticated(true);
+      //   }
+      // });
     };
 
-    initGun();
-  }, []);
+    if (isMounted()) {
+      initGun();
+    }
+  }, [isMounted]);
 
   // useEffect(() => {
   //   const getCreds = async () => {

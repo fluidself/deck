@@ -1,3 +1,5 @@
+// @ts-ignore
+import LitJsSdk from 'lit-js-sdk';
 import { withIronSessionSsr } from 'iron-session/next';
 import { IconInfoCircle } from '@tabler/icons';
 import { useEffect } from 'react';
@@ -5,12 +7,26 @@ import { useAccount } from 'wagmi';
 import { ironOptions } from 'constants/iron-session';
 import selectDecks from 'lib/api/selectDecks';
 import { useAuth } from 'utils/useAuth';
+import useIsMounted from 'utils/useIsMounted';
 import { EthereumIcon } from 'components/home/EthereumIcon';
 import Button from 'components/home/Button';
 
 export default function Home() {
   const [{ data: accountData }] = useAccount();
   const { signIn, signOut } = useAuth();
+  const isMounted = useIsMounted();
+
+  useEffect(() => {
+    const initLit = async () => {
+      const client = new LitJsSdk.LitNodeClient({ alertWhenUnauthorized: false, debug: false });
+      await client.connect();
+      window.litNodeClient = client;
+    };
+
+    if (!window.litNodeClient && isMounted()) {
+      initLit();
+    }
+  }, [isMounted]);
 
   useEffect(() => {
     const onDisconnect = () => signOut();
