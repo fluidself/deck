@@ -1,8 +1,7 @@
 import { Editor, Point, Transforms } from 'slate';
 import { ElementType, NoteLink } from 'types/slate';
 import { createNodeId } from '../withNodeId';
-import { deleteMarkup } from './handleInlineShortcuts';
-import getOrCreateNoteId from 'utils/getOrCreateNoteId';
+import { deleteMarkup, getOrCreateNoteId } from './handleInlineShortcuts';
 
 export default function handleCustomNoteLink(
   editor: Editor,

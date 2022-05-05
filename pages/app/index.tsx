@@ -56,7 +56,7 @@ export default function AppHome() {
         if (userId === user.id) {
           const deckToAccess = await getUser()?.get(`deck/${deckId}`).then();
           if (!deckToAccess) return;
-          console.log(deckToAccess);
+
           const { encryptedString, encryptedSymmetricKey, accessControlConditions } = deckToAccess;
           const decryptedDeckKeypair = await decryptWithLit(
             encryptedString,

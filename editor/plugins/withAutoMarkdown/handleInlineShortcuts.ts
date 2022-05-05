@@ -3,8 +3,9 @@ import { v4 as uuidv4 } from 'uuid';
 import { ElementType, Mark } from 'types/slate';
 import { isMark } from 'editor/formatting';
 import { store } from 'lib/store';
-import upsertNote from 'lib/api/upsertNote';
+// import upsertNote from 'lib/api/upsertNote';
 import { caseInsensitiveStringEqual } from 'utils/string';
+import { toggleStorageChanged } from 'components/AppLayout';
 import { deleteText } from 'editor/transforms';
 import handleMark from './handleMark';
 import handleExternalLink from './handleExternalLink';
@@ -117,11 +118,11 @@ export const getOrCreateNoteId = (noteTitle: string): string | null => {
   if (matchingNote) {
     noteId = matchingNote.id;
   } else {
-    const deckId = store.getState().deckId;
+    // TODO: figure out a better way to handle this
     noteId = uuidv4();
-    if (deckId) {
-      upsertNote({ id: noteId, deck_id: deckId, title: noteTitle });
-    }
+    localStorage.setItem('deck-note-upsert-id', noteId);
+    localStorage.setItem('deck-note-upsert-title', noteTitle);
+    toggleStorageChanged();
   }
 
   return noteId;

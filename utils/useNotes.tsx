@@ -17,6 +17,7 @@ export default function useNotes() {
     query: { deckId },
   } = router;
 
+  // TODO: move .on handlers from AppLayout here?
   // https://stackoverflow.com/questions/43638938/updating-an-object-with-setstate-in-react
 
   // useEffect(() => {

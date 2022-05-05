@@ -98,6 +98,7 @@ export const GunProvider = ({ children, sessionUser }: Props) => {
           });
         });
 
+        // TODO: Radix sometimes undefined breaks this
         gunRef.current = Gun({
           peers: NEXT_PUBLIC_GUN_PEERS,
           // use indexdb instead by including radisk dependencies

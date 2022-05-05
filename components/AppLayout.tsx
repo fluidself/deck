@@ -14,7 +14,7 @@ import useHotkeys from 'utils/useHotkeys';
 import { useAuth } from 'utils/useAuth';
 import useGun from 'utils/useGun';
 // import useDeck from 'utils/useDeck';
-// import useNotes from 'utils/useNotes';
+import useNotes from 'utils/useNotes';
 import useIsMounted from 'utils/useIsMounted';
 import { isMobile } from 'utils/device';
 import Sidebar from './sidebar/Sidebar';
@@ -27,6 +27,8 @@ type Props = {
   className?: string;
 };
 
+let storageChanged = false;
+
 export default function AppLayout(props: Props) {
   const { children, className = '' } = props;
   const router = useRouter();
@@ -36,7 +38,7 @@ export default function AppLayout(props: Props) {
   const { user, isLoaded, signOut } = useAuth();
   const [{ data: accountData }] = useAccount();
   const { isReady, getUser } = useGun();
-  // const { getNotes } = useNotes();
+  const { upsertNote: upsertDbNote } = useNotes();
   const [isPageLoaded, setIsPageLoaded] = useState(false);
   const [dbNotes, setDbNotes] = useState({});
   const isMounted = useIsMounted();
@@ -218,6 +220,23 @@ export default function AppLayout(props: Props) {
     };
   }, [getUser, upsertNote, updateNote, deleteNote]);
 
+  // TODO: figure out a less hacky way to transmit this update
+  // editor/plugins/withAutoMarkdown/handleInlineShortcuts.ts
+  useEffect(() => {
+    const interval = setInterval(() => {
+      if (storageChanged) {
+        const upsertId = localStorage.getItem('deck-note-upsert-id');
+        const upsertTitle = localStorage.getItem('deck-note-upsert-title');
+        if (!upsertId || !upsertTitle) return;
+        upsertDbNote(upsertTitle, upsertId);
+        localStorage.removeItem('deck-note-upsert-id');
+        localStorage.removeItem('deck-note-upsert-title');
+      }
+    }, 4000);
+
+    return () => clearInterval(interval);
+  }, []);
+
   const hotkeys = useMemo(
     () => [
       {
@@ -291,4 +310,8 @@ const removeNonexistentNotes = (tree: NoteTreeItem[], notes: Notes) => {
       removeNonexistentNotes(item.children, notes);
     }
   }
+};
+
+export const toggleStorageChanged = () => {
+  storageChanged = true;
 };
