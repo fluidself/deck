@@ -116,7 +116,6 @@ export default function AppLayout(props: Props) {
     // const { data: deckData } = await supabase.from<Deck>('decks').select('note_tree').eq('id', deckId).single();
     // const deckData = { note_tree: null };
     const storedNoteTree = await getUser()?.get('note_tree').then();
-    console.log('storedNoteTree', storedNoteTree);
 
     if (storedNoteTree && typeof storedNoteTree !== 'undefined') {
       const noteTree: NoteTreeItem[] = [...JSON.parse(storedNoteTree)];

@@ -1,7 +1,6 @@
 import { useCallback } from 'react';
 import { useRouter } from 'next/router';
 import deleteBacklinks from 'editor/backlinks/deleteBacklinks';
-import deleteNote from 'lib/api/deleteNote';
 import { store, useStore } from 'lib/store';
 import { useCurrentDeck } from 'utils/useCurrentDeck';
 import useNotes from './useNotes';
@@ -9,7 +8,7 @@ import useNotes from './useNotes';
 export default function useDeleteNote(noteId: string) {
   const router = useRouter();
   const { deck } = useCurrentDeck();
-  const { updateNote } = useNotes();
+  const { deleteNote, updateNote } = useNotes();
 
   const openNoteIds = useStore(state => state.openNoteIds);
 
@@ -35,7 +34,8 @@ export default function useDeleteNote(noteId: string) {
       }
     }
 
-    await deleteNote(noteId, deck.id);
+    await deleteNote(noteId);
+
     const deleteBacklinkPayloads = deleteBacklinks(noteId);
     const promises = [];
     for (const data of deleteBacklinkPayloads) {

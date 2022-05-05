@@ -4,9 +4,7 @@ import { v4 as uuidv4 } from 'uuid';
 import { store } from 'lib/store';
 import type { PickPartial } from 'types/utils';
 import type { Note } from 'types/gun';
-// import type { Note } from 'types/supabase';
 import useGun from 'utils/useGun';
-import { encryptWithLit, decryptWithLit } from 'utils/encryption';
 
 export type NoteUpdate = PickPartial<Note, 'content' | 'title' | 'created_at' | 'updated_at'>;
 
@@ -102,7 +100,6 @@ export default function useNotes() {
         console.log('reauthenticating DECK');
         await reauthenticateDeck(deckId);
       } catch (err) {
-        // TODO show error to user
         console.error(err);
       }
     }
@@ -117,9 +114,6 @@ export default function useNotes() {
       .map()
       // .on(note => {
       .once(note => {
-        // console.log('getNotes', note);
-        // TODO: sometimes only gets the last note
-        // delete note._;
         if (note) {
           notes.push({ ...note, content: JSON.parse(note.content) });
         }
@@ -143,7 +137,7 @@ export default function useNotes() {
 
       await getUser()?.get('notes').get(note.id).put(note).then();
 
-      // Refreshes the list of notes in the sidebar
+      // Refresh the list of notes in the sidebar
       store.getState().upsertNote({ ...note, content: JSON.parse(note.content) });
 
       await getUser()?.get('note_tree').put(JSON.stringify(store.getState().noteTree)).then();
@@ -173,7 +167,19 @@ export default function useNotes() {
     [checkReauthenticate, getUser],
   );
 
-  const deleteNote = useCallback(async () => {}, [checkReauthenticate, getUser]);
+  const deleteNote = useCallback(
+    async (noteId: string) => {
+      await checkReauthenticate();
+
+      // Update note titles in sidebar
+      store.getState().deleteNote(noteId);
+
+      await getUser()?.get('notes').get(noteId).put(null).then();
+
+      await getUser()?.get('note_tree').put(JSON.stringify(store.getState().noteTree)).then();
+    },
+    [checkReauthenticate, getUser],
+  );
 
   return {
     notes,

@@ -1,4 +1,4 @@
-import { Note } from 'types/supabase';
+import { Note } from 'types/gun';
 import { getReadableDatetime } from 'utils/date';
 
 type Props = {

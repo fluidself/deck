@@ -6,7 +6,6 @@ import Editor from 'components/editor/Editor';
 import Title from 'components/editor/Title';
 import { store, useStore } from 'lib/store';
 import type { NoteUpdate } from 'lib/api/updateNote';
-// import updateDbNote from 'lib/api/updateNote';
 import useNotes from 'utils/useNotes';
 import { ProvideCurrentNote } from 'utils/useCurrentNote';
 import { caseInsensitiveStringEqual } from 'utils/string';
@@ -15,7 +14,6 @@ import Backlinks from './editor/backlinks/Backlinks';
 import NoteHeader from './editor/NoteHeader';
 import ErrorBoundary from './ErrorBoundary';
 
-// const SYNC_DEBOUNCE_MS = 100000000000000000000000000000000000000000000000;
 const SYNC_DEBOUNCE_MS = 1000;
 
 type Props = {
