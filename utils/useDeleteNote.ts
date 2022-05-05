@@ -4,10 +4,12 @@ import deleteBacklinks from 'editor/backlinks/deleteBacklinks';
 import deleteNote from 'lib/api/deleteNote';
 import { store, useStore } from 'lib/store';
 import { useCurrentDeck } from 'utils/useCurrentDeck';
+import useNotes from './useNotes';
 
 export default function useDeleteNote(noteId: string) {
   const router = useRouter();
   const { deck } = useCurrentDeck();
+  const { updateNote } = useNotes();
 
   const openNoteIds = useStore(state => state.openNoteIds);
 
@@ -34,7 +36,12 @@ export default function useDeleteNote(noteId: string) {
     }
 
     await deleteNote(noteId, deck.id);
-    await deleteBacklinks(noteId);
+    const deleteBacklinkPayloads = deleteBacklinks(noteId);
+    const promises = [];
+    for (const data of deleteBacklinkPayloads) {
+      promises.push(updateNote(data));
+    }
+    await Promise.all(promises);
   }, [router, noteId, openNoteIds]);
 
   return onDeleteClick;

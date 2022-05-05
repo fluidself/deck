@@ -13,7 +13,6 @@ const handler = async (req: NextApiRequest, res: NextApiResponse) => {
 
   try {
     const { message, signature } = req.body;
-    console.log('verify', message, signature);
     const siweMessage = new SiweMessage(message);
     const fields = await siweMessage.validate(signature);
 

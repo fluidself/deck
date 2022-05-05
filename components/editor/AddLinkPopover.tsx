@@ -5,10 +5,10 @@ import type { TablerIcon } from '@tabler/icons';
 import { IconUnlink, IconLink, IconFilePlus } from '@tabler/icons';
 import { v4 as uuidv4 } from 'uuid';
 import { useCurrentDeck } from 'utils/useCurrentDeck';
-import upsertNote from 'lib/api/upsertNote';
 import { insertExternalLink, insertNoteLink, removeLink } from 'editor/formatting';
 import { isUrl } from 'utils/url';
 import useNoteSearch from 'utils/useNoteSearch';
+import useNotes from 'utils/useNotes';
 import { caseInsensitiveStringEqual } from 'utils/string';
 import EditorPopover from './EditorPopover';
 import type { AddLinkPopoverState } from './Editor';
@@ -35,6 +35,7 @@ type Props = {
 export default function AddLinkPopover(props: Props) {
   const { addLinkPopoverState, setAddLinkPopoverState } = props;
   const { deck } = useCurrentDeck();
+  const { upsertNote } = useNotes();
   const inputRef = useRef<HTMLInputElement | null>(null);
   const [linkText, setLinkText] = useState<string>('');
   const editor = useSlate();
@@ -122,7 +123,7 @@ export default function AddLinkPopover(props: Props) {
         // Add a new note and insert a link to it with the note title as the link text
         const noteId = uuidv4();
         insertNoteLink(editor, noteId, linkText);
-        upsertNote({ id: noteId, deck_id: deck.id, title: linkText });
+        await upsertNote(linkText, noteId);
         Transforms.move(editor, { distance: 1, unit: 'offset' }); // Focus after the note link
       } else if (option.type === OptionType.REMOVE_LINK) {
         // Remove the link

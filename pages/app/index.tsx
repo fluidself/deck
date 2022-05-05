@@ -27,7 +27,7 @@ export default function AppHome() {
   const router = useRouter();
   const [{ data: accountData }] = useAccount();
   const { user, isLoaded, signOut } = useAuth();
-  const { getUser, createUser, putDeckKeys, authenticate, logout } = useGun();
+  const { getUser, createUser, authenticate, logout } = useGun();
   const { data: decks } = useSWR(user ? 'decks' : null, () => selectDecks(user?.id), { revalidateOnFocus: false });
   const [requestingAccess, setRequestingAccess] = useState<boolean>(false);
   const [creatingDeck, setCreatingDeck] = useState<boolean>(false);
@@ -56,6 +56,7 @@ export default function AppHome() {
 
   const createNewDeck = async (deckName: string) => {
     if (!user || !process.env.NEXT_PUBLIC_APP_ACCESS_KEY_PAIR) return;
+
     // TODO: try/catch or other error handling
     // TODO: does this belong in some hook?
 
@@ -76,7 +77,6 @@ export default function AppHome() {
         },
       },
     ];
-    // TODO: drop the 'Base64' suffix
     const [encryptedStringBase64, encryptedSymmetricKeyBase64] = await encryptWithLit(
       JSON.stringify(deckKeypair),
       accessControlConditions,
@@ -89,29 +89,26 @@ export default function AppHome() {
       .put({
         id: deckId,
         name: deckName,
-        encryptedStringBase64,
-        encryptedSymmetricKeyBase64,
+        encryptedString: encryptedStringBase64,
+        encryptedSymmetricKey: encryptedSymmetricKeyBase64,
         accessControlConditions: JSON.stringify(accessControlConditions),
       })
       .then();
+
     await getUser()?.get('decks').get(deckId).put(user.id).then();
 
     // RE: indexing
     // https://github.com/rococtz/gun_examples
     // await getUser()?.get('decks').get(user.id).put(ref).then();
 
-    // await logout();
     await authenticate(deckKeypair);
 
     // TODO: encrypt with SEA pair
     const onboardingNotes = createOnboardingNotes();
-    // TODO: the arrays in content will break this?
+    // TODO: rework?
     // util functions in useGun?
     // https://dev.to/negue/working-with-graph-structures-2006
     // https://github.com/amark/gun/issues/231
-    // JSON.stringify?
-    // set?
-    // serialize?
     for (const note of onboardingNotes) {
       await getUser()?.get('notes').get(note.id).put(note).then();
     }
@@ -222,26 +219,21 @@ export default function AppHome() {
                   //   .map()
                   //   .once((userId, deckId): any => console.log(`${deckId} is owned by ${userId}`));
 
-                  const deckId = 'faca5951-73dd-42a1-9ac4-6384682e9a47';
+                  const deckId = '1ef1fc3b-563b-49e5-86c5-f3619989cf68';
                   const deckToAccess = await getUser()?.get(`deck/${deckId}`).then();
                   // console.log(deckToAccess);
 
-                  const { encryptedStringBase64, encryptedSymmetricKeyBase64, accessControlConditions } = deckToAccess;
+                  const { encryptedString, encryptedSymmetricKey, accessControlConditions } = deckToAccess;
                   const decryptedDeckKeypair = await decryptWithLit(
-                    encryptedStringBase64,
-                    encryptedSymmetricKeyBase64,
+                    encryptedString,
+                    encryptedSymmetricKey,
                     JSON.parse(accessControlConditions),
                   );
 
                   await authenticate(JSON.parse(decryptedDeckKeypair));
                   console.log('logged in as: ', getUser()?.is?.pub);
-                  // getUser()
-                  //   ?.get('notes')
-                  //   .map()
-                  //   .once((note, noteId) => console.log(noteId));
 
                   router.push(`/app/${deckId}`);
-                  // await putDeckKeys();
                 }}
               >
                 Test Gun

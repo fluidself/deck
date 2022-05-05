@@ -8,10 +8,7 @@ import { Backlink } from './useBacklinks';
  * Updates the block text for each block reference. This is necessary for
  * full-text search.
  */
-const updateBlockBacklinks = async (
-  blockBacklinks: Backlink[],
-  newText: string
-) => {
+const updateBlockBacklinks = (blockBacklinks: Backlink[], newText: string) => {
   const notes = store.getState().notes;
   const updateData: Pick<Note, 'id' | 'content'>[] = [];
 
@@ -44,18 +41,12 @@ const updateBlockBacklinks = async (
     store.getState().updateNote(newNote);
   }
 
-  // It would be better if we could consolidate the update requests into one request
-  // See https://github.com/supabase/supabase-js/issues/156
-  const promises = [];
+  const promisePayloads = [];
   for (const data of updateData) {
-    promises.push(
-      supabase
-        .from<Note>('notes')
-        .update({ content: data.content })
-        .eq('id', data.id)
-    );
+    promisePayloads.push(data);
   }
-  await Promise.all(promises);
+
+  return promisePayloads;
 };
 
 export default updateBlockBacklinks;

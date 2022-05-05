@@ -1,3 +1,5 @@
+// @ts-ignore
+import LitJsSdk from 'lit-js-sdk';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import type { ReactNode } from 'react';
 import { useRouter } from 'next/router';
@@ -6,12 +8,16 @@ import classNames from 'classnames';
 import colors from 'tailwindcss/colors';
 import { useAccount } from 'wagmi';
 import { useStore, store, NoteTreeItem, getNoteTreeItem, Notes, SidebarTab } from 'lib/store';
-import supabase from 'lib/supabase';
+// import supabase from 'lib/supabase';
 import { Note, Deck } from 'types/supabase';
+// import type {Note} from 'types/gun'
 import { ProvideCurrentDeck } from 'utils/useCurrentDeck';
 import useHotkeys from 'utils/useHotkeys';
 import { useAuth } from 'utils/useAuth';
 import useGun from 'utils/useGun';
+// import useDeck from 'utils/useDeck';
+import useNotes from 'utils/useNotes';
+import useIsMounted from 'utils/useIsMounted';
 import { isMobile } from 'utils/device';
 import Sidebar from './sidebar/Sidebar';
 import FindOrCreateModal from './FindOrCreateModal';
@@ -31,8 +37,10 @@ export default function AppLayout(props: Props) {
   } = router;
   const { user, isLoaded, signOut } = useAuth();
   const [{ data: accountData }] = useAccount();
-  const { isReady, isAuthenticated, getUser, authenticate } = useGun();
+  const { isReady, getUser } = useGun();
+  const { getNotes } = useNotes();
   const [isPageLoaded, setIsPageLoaded] = useState(false);
+  const isMounted = useIsMounted();
 
   useEffect(() => {
     const onDisconnect = () => signOut();
@@ -57,26 +65,27 @@ export default function AppLayout(props: Props) {
   const setNoteTree = useStore(state => state.setNoteTree);
   const setDeckId = useStore(state => state.setDeckId);
 
+  const initLit = async () => {
+    const client = new LitJsSdk.LitNodeClient({ alertWhenUnauthorized: false, debug: false });
+    await client.connect();
+    window.litNodeClient = client;
+  };
+
   const initData = useCallback(async () => {
+    if (!window.litNodeClient && isMounted()) {
+      await initLit();
+    }
+
     if (!deckId || typeof deckId !== 'string') {
       return;
     }
 
     setDeckId(deckId);
 
-    console.log('isAuthenticated', isAuthenticated);
-    console.log('logged in as: ', getUser()?.is?.pub);
-
-    const notes: Note[] = [];
-    await getUser()
-      ?.get('notes')
-      .map()
-      .once((note, noteId) => {
-        // delete note._;
-        notes.push({ ...note, content: JSON.parse(note.content) });
-      })
-      .then();
-    // console.log(notes);
+    // TODO: use Note type from types/gun (also in store)
+    // const notes: Note[] = [];
+    const notes: any[] = await getNotes();
+    console.log('notes', notes);
 
     // Redirect to most recent note or first note in database
     if (router.pathname.match(/^\/app\/[^/]+$/i)) {
@@ -105,10 +114,12 @@ export default function AppLayout(props: Props) {
     // TODO: note tree in Gun
     // Set note tree
     // const { data: deckData } = await supabase.from<Deck>('decks').select('note_tree').eq('id', deckId).single();
-    const deckData = { note_tree: null };
+    // const deckData = { note_tree: null };
+    const storedNoteTree = await getUser()?.get('note_tree').then();
+    console.log('storedNoteTree', storedNoteTree);
 
-    if (deckData?.note_tree) {
-      const noteTree: NoteTreeItem[] = [...deckData.note_tree];
+    if (storedNoteTree && typeof storedNoteTree !== 'undefined') {
+      const noteTree: NoteTreeItem[] = [...JSON.parse(storedNoteTree)];
       // This is a sanity check for removing notes in the noteTree that do not exist
       removeNonexistentNotes(noteTree, notesAsObj);
       // If there are notes that are not in the note tree, add them
@@ -126,7 +137,7 @@ export default function AppLayout(props: Props) {
     }
 
     setIsPageLoaded(true);
-  }, [deckId, router, setNotes, setNoteTree, setDeckId]);
+  }, [deckId, router, setNotes, setNoteTree, setDeckId, getNotes]);
 
   useEffect(() => {
     if (isLoaded && !user) {
@@ -164,33 +175,53 @@ export default function AppLayout(props: Props) {
   }, [setIsSidebarOpen, setIsPageStackingOn, hasHydrated]);
 
   // useEffect(() => {
-  //   if (!deckId) {
-  //     return;
-  //   }
+  //   // const subscription = supabase
+  //   //   .from<Note>(`notes:deck_id=eq.${deckId}`)
+  //   //   .on('*', payload => {
+  //   //     if (payload.eventType === 'INSERT') {
+  //   //       upsertNote(payload.new);
+  //   //     } else if (payload.eventType === 'UPDATE') {
+  //   //       // Don't update the note if it is currently open
+  //   //       const openNoteIds = store.getState().openNoteIds;
+  //   //       if (!openNoteIds.includes(payload.new.id)) {
+  //   //         updateNote(payload.new);
+  //   //       }
+  //   //     } else if (payload.eventType === 'DELETE') {
+  //   //       deleteNote(payload.old.id);
+  //   //     }
+  //   //   })
+  //   //   .subscribe();
 
-  //   // Subscribe to changes on the notes table for the current DECK
-  //   // TODO: https://gun.eco/docs/API#-a-name-on-a-gun-on-callback-option-
-  //   const subscription = supabase
-  //     .from<Note>(`notes:deck_id=eq.${deckId}`)
-  //     .on('*', payload => {
-  //       if (payload.eventType === 'INSERT') {
-  //         upsertNote(payload.new);
-  //       } else if (payload.eventType === 'UPDATE') {
-  //         // Don't update the note if it is currently open
-  //         const openNoteIds = store.getState().openNoteIds;
-  //         if (!openNoteIds.includes(payload.new.id)) {
-  //           updateNote(payload.new);
-  //         }
-  //       } else if (payload.eventType === 'DELETE') {
-  //         deleteNote(payload.old.id);
-  //       }
-  //     })
-  //     .subscribe();
+  //   // return () => {
+  //   //   subscription.unsubscribe();
+  //   // };
+
+  //   const listen = async function (note: any, id: string) {
+  //     console.log('id', id);
+  //     console.log('note', { ...note, content: JSON.parse(note.content) });
+  //     // if (!note) {
+  //     //   updateToStore({ id }, true)
+  //     //   return
+  //     // }
+  //     // const data = await decrypt(note)
+  //     // updateToStore({ ...data, id })
+  //   };
+
+  //   // Subscribe to note changes for the current DECK
+  //   getUser()
+  //     ?.get('notes')
+  //     .map()
+  //     // .on(listen)
+  //     .on((note: any, id: string) => {
+  //       console.log('on data', note, id);
+  //       // TODO: massage and use this data like above
+  //       // https://gun.eco/docs/API#-a-name-on-a-gun-on-callback-option-
+  //     });
 
   //   return () => {
-  //     subscription.unsubscribe();
+  //     if (getUser()?.get('notes').off) getUser()?.get('notes').off();
   //   };
-  // }, [deckId, upsertNote, updateNote, deleteNote]);
+  // }, [getUser, upsertNote, updateNote, deleteNote]);
 
   const hotkeys = useMemo(
     () => [

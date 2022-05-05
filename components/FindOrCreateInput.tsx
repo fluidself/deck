@@ -4,10 +4,10 @@ import { useRouter } from 'next/router';
 import type { TablerIcon } from '@tabler/icons';
 import { IconFilePlus, IconSearch } from '@tabler/icons';
 import { toast } from 'react-toastify';
-import upsertNote from 'lib/api/upsertNote';
 import { useCurrentDeck } from 'utils/useCurrentDeck';
 import useNoteSearch from 'utils/useNoteSearch';
 import { caseInsensitiveStringEqual } from 'utils/string';
+import useNotes from 'utils/useNotes';
 
 enum OptionType {
   NOTE,
@@ -30,6 +30,7 @@ function FindOrCreateInput(props: Props, ref: ForwardedRef<HTMLInputElement>) {
   const { onOptionClick: onOptionClickCallback, className = '' } = props;
   const router = useRouter();
   const { deck } = useCurrentDeck();
+  const { upsertNote } = useNotes();
 
   const [inputText, setInputText] = useState('');
   const [selectedOptionIndex, setSelectedOptionIndex] = useState<number>(0);
@@ -69,13 +70,14 @@ function FindOrCreateInput(props: Props, ref: ForwardedRef<HTMLInputElement>) {
       onOptionClickCallback?.();
 
       if (option.type === OptionType.NEW_NOTE) {
-        const note = await upsertNote({ deck_id: deck.id, title: inputText });
-        if (!note) {
+        const noteId = await upsertNote(inputText);
+
+        if (!noteId) {
           toast.error(`There was an error creating the note ${inputText}.`);
           return;
         }
 
-        router.push(`/app/${deck.id}/note/${note.id}`);
+        router.push(`/app/${deck.id}/note/${noteId}`);
       } else if (option.type === OptionType.NOTE) {
         router.push(`/app/${deck.id}/note/${option.id}`);
       } else {

@@ -1,13 +1,14 @@
 import { Editor, Point, Transforms } from 'slate';
 import { ElementType, NoteLink } from 'types/slate';
 import { createNodeId } from '../withNodeId';
-import { deleteMarkup, getOrCreateNoteId } from './handleInlineShortcuts';
+import { deleteMarkup } from './handleInlineShortcuts';
+import getOrCreateNoteId from 'utils/getOrCreateNoteId';
 
 export default function handleNoteLink(
   editor: Editor,
   result: RegExpMatchArray,
   endOfMatchPoint: Point,
-  textToInsertLength: number
+  textToInsertLength: number,
 ): boolean {
   const [, startMark, noteTitle, endMark] = result;
 

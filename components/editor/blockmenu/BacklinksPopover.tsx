@@ -1,11 +1,4 @@
-import {
-  useCallback,
-  useMemo,
-  useState,
-  useEffect,
-  useRef,
-  Fragment,
-} from 'react';
+import { useCallback, useMemo, useState, useEffect, useRef, Fragment } from 'react';
 import { Node } from 'slate';
 import { Popover } from '@headlessui/react';
 import { usePopper } from 'react-popper';
@@ -13,6 +6,7 @@ import { ReferenceableBlockElement } from 'types/slate';
 import Portal from 'components/Portal';
 import updateBlockBacklinks from 'editor/backlinks/updateBlockBacklinks';
 import { shallowEqual, Store, useStore } from 'lib/store';
+import useNotes from 'utils/useNotes';
 import BlockBacklinks from '../backlinks/BlockBacklinks';
 import { getNumOfMatches } from '../backlinks/Backlinks';
 
@@ -23,42 +17,33 @@ type BacklinksPopoverProps = {
 };
 
 export default function BacklinksPopover(props: BacklinksPopoverProps) {
+  const { updateNote } = useNotes();
   const { element } = props;
 
   const referenceElementRef = useRef<HTMLButtonElement | null>(null);
-  const [popperElement, setPopperElement] = useState<HTMLDivElement | null>(
-    null
-  );
-  const { styles, attributes, state } = usePopper(
-    referenceElementRef.current,
-    popperElement,
-    {
-      placement: 'bottom-end',
-      modifiers: [{ name: 'offset', options: { offset: [0, 6] } }],
-    }
-  );
+  const [popperElement, setPopperElement] = useState<HTMLDivElement | null>(null);
+  const { styles, attributes, state } = usePopper(referenceElementRef.current, popperElement, {
+    placement: 'bottom-end',
+    modifiers: [{ name: 'offset', options: { offset: [0, 6] } }],
+  });
 
-  const blockBacklinksSelector = useCallback(
-    (state: Store) => state.blockIdToBacklinksMap[element.id] ?? [],
-    [element.id]
-  );
+  const blockBacklinksSelector = useCallback((state: Store) => state.blockIdToBacklinksMap[element.id] ?? [], [element.id]);
   const blockBacklinks = useStore(blockBacklinksSelector, shallowEqual);
-  const numOfMatches = useMemo(
-    () => getNumOfMatches(blockBacklinks),
-    [blockBacklinks]
-  );
+  const numOfMatches = useMemo(() => getNumOfMatches(blockBacklinks), [blockBacklinks]);
 
   // Update block references with the proper text when the block has changed
   const currentElementText = useMemo(() => Node.string(element), [element]);
   const prevSavedElementText = useRef<string>(currentElementText);
   useEffect(() => {
     // Only update if it is not the first render, there are backlinks, and the element text has updated
-    if (
-      numOfMatches > 0 &&
-      prevSavedElementText.current !== currentElementText
-    ) {
-      const handler = setTimeout(() => {
-        updateBlockBacklinks(blockBacklinks, currentElementText);
+    if (numOfMatches > 0 && prevSavedElementText.current !== currentElementText) {
+      const handler = setTimeout(async () => {
+        const updateBlockBacklinkPayloads = updateBlockBacklinks(blockBacklinks, currentElementText);
+        const promises = [];
+        for (const data of updateBlockBacklinkPayloads) {
+          promises.push(updateNote(data));
+        }
+        await Promise.all(promises);
         prevSavedElementText.current = currentElementText;
       }, UPDATE_BLOCK_BACKLINKS_DEBOUNCE_MS);
 
@@ -83,9 +68,7 @@ export default function BacklinksPopover(props: BacklinksPopoverProps) {
             <Portal>
               <Popover.Panel
                 className={`z-10 p-2 overflow-y-auto bg-white rounded shadow-popover w-64 md:w-96 lg:w-128 max-h-128 dark:bg-gray-800 ${
-                  state?.modifiersData.hide?.isReferenceHidden
-                    ? 'invisible pointer-events-none'
-                    : ''
+                  state?.modifiersData.hide?.isReferenceHidden ? 'invisible pointer-events-none' : ''
                 }`}
                 contentEditable={false}
                 static

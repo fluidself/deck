@@ -1,24 +1,8 @@
-/*
- * Usage example:
- *   import useGunContext from './useGunContext'
- *   // ...
- *   const { getGun, getUser } = useGunContext()
- *
- *   getGun().get('ours').put('this')
- *   getUser().get('mine').put('that')
- */
-import axios, { CancelTokenSource } from 'axios';
 import React, { createContext, useContext, useRef, useEffect, useState } from 'react';
-// import { Layer, Box, Text } from 'grommet';
-// import type { IGunChain } from 'gun/types/gun';
-
 import type { IGunUserInstance, ISEAPair } from 'gun/types/sea';
-// import type { IGunCryptoKeyPair } from 'gun/types/types';
 import Gun from 'gun/gun';
 import SEA from 'gun/sea';
-
-// import EnterPasswordForm from 'components/EnterPasswordForm';
-// import type { GunUser } from 'utils/profiles';
+import { encryptWithLit, decryptWithLit } from 'utils/encryption';
 
 interface GunUser {
   id: string;
@@ -43,13 +27,10 @@ interface ContextValue {
   setCertificate: (cert: string) => void;
   getAccessToken: () => string | undefined;
   setAccessToken: (token: string) => void;
-  // checkIfAccountExists: (id: string) => Promise<any>;
   authenticate: (pair: ISEAPair) => Promise<any>;
+  reauthenticateDeck: (deckId: string) => Promise<void>;
   logout: () => void;
   createUser: () => Promise<any>;
-  putDeckKeys: () => Promise<any>;
-  // createUser: (value: any) => Promise<any>;
-  // triggerReauthentication: (username: string) => Promise<void>;
   isReady: boolean;
   isAuthenticated: boolean;
   needsReauthentication: string | undefined;
@@ -63,12 +44,10 @@ const GunContext = createContext<ContextValue>({
   setCertificate: () => {},
   getAccessToken: () => undefined,
   setAccessToken: () => {},
-  // checkIfAccountExists: () => Promise.resolve(),
   authenticate: () => Promise.resolve(),
+  reauthenticateDeck: (deckId: string) => Promise.resolve(),
   logout: () => {},
   createUser: () => Promise.resolve(),
-  putDeckKeys: () => Promise.resolve(),
-  // triggerReauthentication: () => Promise.resolve(),
   isReady: false,
   isAuthenticated: false,
   needsReauthentication: undefined,
@@ -79,11 +58,6 @@ export const GunProvider = ({ children, sessionUser }: Props) => {
   const userRef = useRef<any>();
   const certificateRef = useRef<string>();
   const accessTokenRef = useRef<string>();
-  const reauthenticationPromiseRef = useRef<{
-    resolve: (value: any | PromiseLike<any>) => void;
-    reject: (value: any | PromiseLike<any>) => void;
-  }>();
-  const credsRequestCancelTokenRef = useRef<CancelTokenSource>();
   const [isReady, setIsReady] = useState<boolean>(false);
   const [isAuthenticated, setIsAuthenticated] = useState<boolean>(false);
   const [needsReauthentication, setNeedsReauthentication] =
@@ -132,7 +106,6 @@ export const GunProvider = ({ children, sessionUser }: Props) => {
 
         // create user
         userRef.current = gunRef.current.user().recall({ sessionStorage: true });
-        // userRef.current = gunRef.current.user();
 
         setIsReady(true);
       }
@@ -205,59 +178,14 @@ export const GunProvider = ({ children, sessionUser }: Props) => {
   //   };
   // }, [sessionUser]);
 
-  // const checkIfAccountExists = async (id: string) => {
-  //   return new Promise(resolve => {
-  //     gunRef.current!.get(`~@${id}`).once((data: any) => {
-  //       console.log('checkIfAccountExists', data);
-  //       if (typeof data !== 'undefined') {
-  //         if (data.err) console.error(data.err);
-
-  //         resolve(true);
-  //       } else {
-  //         resolve(false);
-  //       }
-  //     });
-  //   });
-  // };
-
   const createUser = async () => {
     return new Promise(async resolve => {
       const keyPair: ISEAPair = await SEA.pair();
 
       await new Promise(async resolve => gunRef.current!.user().create(keyPair, resolve));
       resolve(keyPair);
-      // gunRef.current!.user().auth(keyPair, ({ err, sea }: any) => resolve(sea.pub));
     });
   };
-
-  const putDeckKeys = async () => {
-    console.log(process.env.NEXT_PUBLIC_APP_ACCESS_KEY_PAIR);
-    // await gunRef.current!.get('#spacenamehere213123').get('uuid-asda39-123asd-asd').put('encrypted-string-here').then();
-    // await gunRef
-    //   .current!.get('#spacenamehere213123')
-    //   .get('uuid-asda39-123asd-asd')
-    //   .map()
-    //   .once((data: any) => {
-    //     console.log(data);
-    //     gunRef.current!.get(data).once((d: any) => console.log(d));
-    //   });
-  };
-
-  // const createUser = async (user: { id: string; gun_key: string }) => {
-  //   console.log('createUser', user);
-
-  //   return new Promise((resolve, reject) => {
-  //     gunRef.current!.user().create(user.id, user.gun_key, ({ err, pub }: any) => {
-  //       // console.log(err, pub);
-  //       if (err) {
-  //         console.error(err);
-  //         reject(false);
-  //       } else {
-  //         resolve(true);
-  //       }
-  //     });
-  //   });
-  // };
 
   const authenticate = async (pair: ISEAPair) => {
     if (!gunRef.current) return;
@@ -269,6 +197,32 @@ export const GunProvider = ({ children, sessionUser }: Props) => {
           reject(new Error(err));
         }
 
+        setIsAuthenticated(true);
+        resolve();
+      });
+    });
+  };
+
+  const reauthenticateDeck = async (deckId: string) => {
+    if (!gunRef.current || !process.env.NEXT_PUBLIC_APP_ACCESS_KEY_PAIR) return;
+
+    await authenticate(JSON.parse(process.env.NEXT_PUBLIC_APP_ACCESS_KEY_PAIR));
+
+    const deckToAccess = await gunRef.current.user().get(`deck/${deckId}`).then();
+    const { encryptedString, encryptedSymmetricKey, accessControlConditions } = deckToAccess;
+    const decryptedDeckKeypair = await decryptWithLit(
+      encryptedString,
+      encryptedSymmetricKey,
+      JSON.parse(accessControlConditions),
+    );
+
+    return new Promise<void>((resolve, reject) => {
+      gunRef.current.user().auth(decryptedDeckKeypair, ({ err, sea }: any) => {
+        if (err) {
+          reject(new Error(err));
+        }
+
+        setIsAuthenticated(true);
         resolve();
       });
     });
@@ -287,48 +241,6 @@ export const GunProvider = ({ children, sessionUser }: Props) => {
     // });
   };
 
-  // const triggerReauthentication = (username: string): Promise<void> => {
-  //   reauthenticationPromiseRef.current = undefined;
-
-  //   if (!username) {
-  //     return Promise.reject(new Error('Username required'));
-  //   }
-
-  //   setNeedsReauthentication(username);
-
-  //   return new Promise((resolve, reject) => {
-  //     reauthenticationPromiseRef.current = {
-  //       resolve: arg => {
-  //         setNeedsReauthentication(undefined);
-
-  //         reauthenticationPromiseRef.current = undefined;
-  //         resolve(arg);
-  //       },
-  //       reject: arg => {
-  //         reauthenticationPromiseRef.current = undefined;
-  //         reject(arg);
-  //       },
-  //     };
-  //   });
-  // };
-
-  // const handleSubmitPassphrase = ({ passphrase }: any) => {
-  //   if (needsReauthentication) {
-  //     userRef.current?.auth(needsReauthentication, passphrase, ({ err, sea }: any) => {
-  //       if (err && reauthenticationPromiseRef.current?.reject) {
-  //         reauthenticationPromiseRef.current.reject(new Error('Could not log inn'));
-  //       } else {
-  //         if (reauthenticationPromiseRef.current?.resolve) {
-  //           reauthenticationPromiseRef.current.resolve({
-  //             username: needsReauthentication,
-  //             pub: sea.pub,
-  //           });
-  //         }
-  //       }
-  //     });
-  //   }
-  // };
-
   return (
     <GunContext.Provider
       value={{
@@ -345,28 +257,13 @@ export const GunProvider = ({ children, sessionUser }: Props) => {
         isReady,
         isAuthenticated,
         needsReauthentication,
-        // checkIfAccountExists,
-        logout,
-        authenticate,
         createUser,
-        putDeckKeys,
-        // triggerReauthentication,
+        authenticate,
+        reauthenticateDeck,
+        logout,
       }}
     >
       {children}
-
-      {/* {needsReauthentication && (
-        <Layer
-          onClickOutside={() => setNeedsReauthentication(undefined)}
-          onEsc={() => setNeedsReauthentication(undefined)}
-        >
-          <Box pad="medium" gap="small">
-            <Text>Re-enter your passphrase to continue</Text>
-
-            <EnterPasswordForm onSubmit={handleSubmitPassphrase} />
-          </Box>
-        </Layer>
-      )} */}
     </GunContext.Provider>
   );
 };

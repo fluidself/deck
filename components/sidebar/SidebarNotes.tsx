@@ -15,13 +15,10 @@ type SidebarNotesProps = {
 function SidebarNotes(props: SidebarNotesProps) {
   const { className, setIsFindOrCreateModalOpen } = props;
 
-  const notes = useStore((state) => state.notes);
-  const noteTree = useStore((state) => state.noteTree);
-  const noteSort = useStore((state) => state.noteSort);
-  const sortedNoteTree = useMemo(
-    () => sortNoteTree(noteTree, notes, noteSort),
-    [noteTree, notes, noteSort]
-  );
+  const notes = useStore(state => state.notes);
+  const noteTree = useStore(state => state.noteTree);
+  const noteSort = useStore(state => state.noteSort);
+  const sortedNoteTree = useMemo(() => sortNoteTree(noteTree, notes, noteSort), [noteTree, notes, noteSort]);
 
   const numOfNotes = useMemo(() => Object.keys(notes).length, [notes]);
 
@@ -29,20 +26,11 @@ function SidebarNotes(props: SidebarNotesProps) {
     <ErrorBoundary>
       <div className={`flex flex-col flex-1 overflow-x-hidden ${className}`}>
         {sortedNoteTree && sortedNoteTree.length > 0 ? (
-          <SidebarNotesTree
-            data={sortedNoteTree}
-            className="flex-1 overflow-y-auto"
-          />
+          <SidebarNotesTree data={sortedNoteTree} className="flex-1 overflow-y-auto" />
         ) : (
-          <p className="flex-1 px-6 my-2 text-center text-gray-500">
-            No notes yet
-          </p>
+          <p className="flex-1 px-6 my-2 text-center text-gray-500">No notes yet</p>
         )}
-        <SidebarNotesFooter
-          noteSort={noteSort}
-          numOfNotes={numOfNotes}
-          setIsFindOrCreateModalOpen={setIsFindOrCreateModalOpen}
-        />
+        <SidebarNotesFooter noteSort={noteSort} numOfNotes={numOfNotes} setIsFindOrCreateModalOpen={setIsFindOrCreateModalOpen} />
       </div>
     </ErrorBoundary>
   );
@@ -51,11 +39,7 @@ function SidebarNotes(props: SidebarNotesProps) {
 /**
  * Sorts the tree recursively based on the information in notes with the given noteSort.
  */
-const sortNoteTree = (
-  tree: NoteTreeItem[],
-  notes: Notes,
-  noteSort: Sort
-): NoteTreeItem[] => {
+const sortNoteTree = (tree: NoteTreeItem[], notes: Notes, noteSort: Sort): NoteTreeItem[] => {
   // Copy tree shallowly
   const newTree = [...tree];
   // Sort tree items (one level)
@@ -80,10 +64,12 @@ const sortNoteTree = (
     }
   });
   // Sort each tree item's children
-  return newTree.map((item) => ({
+  return newTree.map(item => ({
     ...item,
     children: sortNoteTree(item.children, notes, noteSort),
   }));
+
+  return newTree;
 };
 
 export default memo(SidebarNotes);

@@ -46,8 +46,6 @@ export async function encryptWithLit(
 }
 
 export async function decryptWithLit(
-  // encryptedString: Uint8Array,
-  // encryptedSymmetricKey: Uint8Array,
   encryptedString: string,
   encryptedSymmetricKey: string,
   accessControlConditions: Array<Object>,
@@ -72,32 +70,3 @@ export async function decryptWithLit(
 
   return decryptedString;
 }
-
-export async function decodeFromB64(encryptedString: string, encryptedSymmetricKey: string) {
-  try {
-    const decodedString = decodeb64(encryptedString);
-    const decodedSymmetricKey = decodeb64(encryptedSymmetricKey);
-
-    if (!decodedString || !decodedSymmetricKey) {
-      throw new Error('Decryption failed');
-    }
-
-    return { decodedString, decodedSymmetricKey };
-  } catch (error) {
-    console.error(error);
-  }
-}
-
-// export async function decryptDeck(deck: any) {
-//   const { encryptedZip, symmetricKey, accessControlConditions } = deck;
-//   const { success, decodedZip, decodedSymmetricKey } = await decodeFromB64(encryptedZip, symmetricKey);
-//   // TODO: fix
-//   if (!success || !decodedZip || !decodedSymmetricKey) {
-//     return { notes: [], accessControlConditions: null };
-//   }
-
-//   const decryptedString = await decryptWithLit(decodedZip, decodedSymmetricKey, accessControlConditions);
-//   const { notes }: { notes: NoteItem[] } = JSON.parse(decryptedString);
-
-//   return { notes, accessControlConditions };
-// }

@@ -12,6 +12,7 @@ import { store } from 'lib/store';
 import supabase from 'lib/supabase';
 import { Note } from 'types/supabase';
 import useDebounce from 'utils/useDebounce';
+import useNotes from 'utils/useNotes';
 import EditorPopover from './EditorPopover';
 
 const DEBOUNCE_MS = 100;
@@ -33,6 +34,7 @@ type Option = {
 
 export default function BlockAutocompletePopover() {
   const { deck } = useCurrentDeck();
+  const { updateNote } = useNotes();
   const editor = useSlate();
 
   const [isVisible, setIsVisible] = useState(false);
@@ -153,7 +155,7 @@ export default function BlockAutocompletePopover() {
           });
 
           // Update note in database
-          await supabase.from<Note>('notes').update({ content: noteEditor.children }).eq('id', option.noteId);
+          await updateNote({ id: option.noteId, content: noteEditor.children });
         } else {
           blockId = option.blockId;
         }

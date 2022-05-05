@@ -24,17 +24,6 @@ function useProvideAuth(): AuthContextType {
     },
     connect,
   ] = useConnect();
-  const {
-    getGun,
-    getUser,
-    // setCertificate,
-    // getCertificate,
-    setAccessToken,
-    checkIfAccountExists,
-    login,
-    logout,
-    createUser,
-  } = useGun();
   const router = useRouter();
   const [isLoaded, setIsLoaded] = useState<boolean>(false);
   const [signingIn, setSigningIn] = useState<boolean>(false);

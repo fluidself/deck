@@ -7,7 +7,7 @@ type CurrentDeck = {
   deck: { id: string };
 };
 
-const DeckContext = createContext<CurrentDeck | undefined>(undefined);
+const CurrentDeckContext = createContext<CurrentDeck | undefined>(undefined);
 
 // function useProvideDeck(deckId: string): CurrentDeck {
 //   const [deck, setDeck] = useState<Deck | null>(null);
@@ -38,11 +38,11 @@ export function ProvideCurrentDeck({ children, deckId }: { children: ReactNode; 
   // const deck = useProvideDeck(deckId);
   const deck = { deck: { id: deckId } };
 
-  return <DeckContext.Provider value={deck}>{children}</DeckContext.Provider>;
+  return <CurrentDeckContext.Provider value={deck}>{children}</CurrentDeckContext.Provider>;
 }
 
 export const useCurrentDeck = () => {
-  const context = useContext(DeckContext);
+  const context = useContext(CurrentDeckContext);
   if (context === undefined) {
     throw new Error('useCurrentDeck must be used within a provider');
   }

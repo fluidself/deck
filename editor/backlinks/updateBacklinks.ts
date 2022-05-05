@@ -3,14 +3,14 @@ import produce from 'immer';
 import { ElementType } from 'types/slate';
 import { Note } from 'types/supabase';
 import { store } from 'lib/store';
-import updateNote from 'lib/api/updateNote';
+// import updateNote from 'lib/api/updateNote';
 import { computeLinkedBacklinks } from './useBacklinks';
 
 /**
  * Updates the link properties of the backlinks on each backlinked note when the
  * current note title has changed.
  */
-const updateBacklinks = async (newTitle: string, noteId: string) => {
+const updateBacklinks = (newTitle: string, noteId: string) => {
   const notes = store.getState().notes;
   const backlinks = computeLinkedBacklinks(notes, noteId);
   const updateData: Pick<Note, 'id' | 'content'>[] = [];
@@ -24,7 +24,7 @@ const updateBacklinks = async (newTitle: string, noteId: string) => {
 
     let newBacklinkContent = note.content;
     for (const match of backlink.matches) {
-      newBacklinkContent = produce(newBacklinkContent, (draftState) => {
+      newBacklinkContent = produce(newBacklinkContent, draftState => {
         // Path should not be empty
         const path = match.path;
         if (path.length <= 0) {
@@ -38,10 +38,7 @@ const updateBacklinks = async (newTitle: string, noteId: string) => {
         }
 
         // Assert that linkNode is a note link
-        if (
-          !Element.isElement(linkNode) ||
-          linkNode.type !== ElementType.NoteLink
-        ) {
+        if (!Element.isElement(linkNode) || linkNode.type !== ElementType.NoteLink) {
           return;
         }
 
@@ -65,13 +62,12 @@ const updateBacklinks = async (newTitle: string, noteId: string) => {
     store.getState().updateNote(newNote);
   }
 
-  // It would be better if we could consolidate the update requests into one request
-  // See https://github.com/supabase/supabase-js/issues/156
-  const promises = [];
+  const promisePayloads = [];
   for (const data of updateData) {
-    promises.push(updateNote(data));
+    promisePayloads.push(data);
   }
-  await Promise.all(promises);
+
+  return promisePayloads;
 };
 
 export default updateBacklinks;
