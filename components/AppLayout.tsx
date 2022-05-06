@@ -38,7 +38,6 @@ export default function AppLayout(props: Props) {
   const { isReady, getUser } = useGun();
   const { upsertNote: upsertDbNote } = useNotes();
   const [isPageLoaded, setIsPageLoaded] = useState(false);
-  const [dbNotes, setDbNotes] = useState({});
   const isMounted = useIsMounted();
 
   useEffect(() => {
@@ -62,7 +61,7 @@ export default function AppLayout(props: Props) {
 
   const setNotes = useStore(state => state.setNotes);
   const setNoteTree = useStore(state => state.setNoteTree);
-  const setDeckId = useStore(state => state.setDeckId);
+  // const setDeckId = useStore(state => state.setDeckId);
 
   const initLit = async () => {
     const client = new LitJsSdk.LitNodeClient({ alertWhenUnauthorized: false, debug: false });
@@ -78,14 +77,12 @@ export default function AppLayout(props: Props) {
     if (!deckId || typeof deckId !== 'string') {
       return;
     }
+    // setDeckId(deckId);
 
-    // TODO: needed?
-    setDeckId(deckId);
+    const notes = Object.values(store.getState().notes);
+    console.log('initData', notes);
 
-    const notes: Note[] = Object.values(dbNotes);
-    // console.log('initData', notes);
-
-    // TODO: consistently fails because notes empty.
+    // TODO: consistently fails because notes empty at this point.
     // Redirect to most recent note or first note in database
     if (router.pathname.match(/^\/app\/[^/]+$/i)) {
       const openNoteIds = store.getState().openNoteIds;
@@ -108,8 +105,9 @@ export default function AppLayout(props: Props) {
     //   acc[note.id] = note;
     //   return acc;
     // }, {});
-    const notesAsObj = dbNotes;
-    setNotes(notesAsObj);
+    // const notesAsObj = dbNotes;
+    // setNotes(notesAsObj);
+    const notesAsObj = store.getState().notes;
 
     // Set note tree
     const storedNoteTree = await getUser()?.get('note_tree').then();
@@ -133,7 +131,7 @@ export default function AppLayout(props: Props) {
     }
 
     setIsPageLoaded(true);
-  }, [deckId, router, setNotes, setNoteTree, setDeckId]);
+  }, [deckId, router, setNotes, setNoteTree]);
 
   useEffect(() => {
     if (isLoaded && !user) {
@@ -143,7 +141,8 @@ export default function AppLayout(props: Props) {
       // Initialize data if there is a user and the data has not been initialized yet
       initData();
     }
-  }, [router, user, isLoaded, isPageLoaded, initData, dbNotes]);
+    // }, [router, user, isLoaded, isPageLoaded, initData, dbNotes]);
+  }, [router, user, isLoaded, isPageLoaded, initData]);
 
   const [isFindOrCreateModalOpen, setIsFindOrCreateModalOpen] = useState(false);
   // const [isSettingsOpen, setIsSettingsOpen] = useState(false);
@@ -171,40 +170,40 @@ export default function AppLayout(props: Props) {
   }, [setIsSidebarOpen, setIsPageStackingOn, hasHydrated]);
 
   useEffect(() => {
-    // const subscription = supabase
-    //   .from<Note>(`notes:deck_id=eq.${deckId}`)
-    //   .on('*', payload => {
-    //     if (payload.eventType === 'INSERT') {
-    //       upsertNote(payload.new);
-    //     } else if (payload.eventType === 'UPDATE') {
-    //       // Don't update the note if it is currently open
-    //       const openNoteIds = store.getState().openNoteIds;
-    //       if (!openNoteIds.includes(payload.new.id)) {
-    //         updateNote(payload.new);
-    //       }
-    //     } else if (payload.eventType === 'DELETE') {
-    //       deleteNote(payload.old.id);
-    //     }
-    //   })
-    //   .subscribe();
-
     // Subscribe to note changes for the current DECK
-    // TODO: handle update/delete
     // TODO: move to useNotes hook?
     // https://gun.eco/docs/API#-a-name-on-a-gun-on-callback-option-
     getUser()
       ?.get('notes')
       .map()
-      .on((note: any, id: string) => {
-        console.log('on data', note, id);
-        if (note) {
-          setDbNotes(dbNotes => ({
-            ...dbNotes,
-            [note.id]: { ...note, content: JSON.parse(note.content) },
-          }));
-          upsertNote({ ...note, content: JSON.parse(note.content) });
-        }
-      });
+      .on(
+        (note: any, id: string) => {
+          const storeNotes = Object.keys(store.getState().notes);
+          if (id && note) {
+            // Note is new
+            if (!storeNotes.includes(id)) {
+              // console.log(`upsert note ${id}`);
+              upsertNote({ ...note, content: JSON.parse(note.content) });
+            } else {
+              // TODO: fires very often. Can I narrow it down or improve puts?
+              // Note is updated?
+              // Don't update the note if it is currently open
+              const openNoteIds = store.getState().openNoteIds;
+              if (storeNotes.includes(id) && !openNoteIds.includes(id)) {
+                // console.log(`update note ${id}`);
+                updateNote({ ...note, content: JSON.parse(note.content) });
+              }
+            }
+          } else if (id && !note) {
+            // Note is deleted
+            if (storeNotes.includes(id)) {
+              // console.log(`delete note ${id}`);
+              deleteNote(id);
+            }
+          }
+        },
+        { change: true },
+      );
 
     // getUser()
     //   ?.get('note_tree')
@@ -219,9 +218,9 @@ export default function AppLayout(props: Props) {
       getUser()?.get('notes').off();
       // getUser()?.get('note_tree').off();
     };
-  }, [getUser, upsertNote, updateNote, deleteNote]);
+  }, [getUser, upsertNote, updateNote, deleteNote, router]);
 
-  // TODO: figure out a less hacky way to transmit this update
+  // TODO: figure out a less hacky way to transmit this update?
   // editor/plugins/withAutoMarkdown/handleInlineShortcuts.ts
   useEffect(() => {
     const interval = setInterval(() => {

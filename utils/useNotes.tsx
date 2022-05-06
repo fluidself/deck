@@ -18,76 +18,9 @@ export default function useNotes() {
   } = router;
 
   // TODO: move .on handlers from AppLayout here?
+  // https://gun.eco/docs/API#-a-name-on-a-gun-on-callback-option-
   // https://stackoverflow.com/questions/43638938/updating-an-object-with-setstate-in-react
-
-  // useEffect(() => {
-  //   const getNotes = async () => {
-  //     await checkReauthenticate();
-
-  //     const notes: Note[] = [];
-  //     await getUser()
-  //       ?.get('notes')
-  //       .map()
-  //       .once(note => {
-  //         console.log(note);
-  //         if (note) {
-  //           notes.push({ ...note, content: JSON.parse(note.content) });
-  //         }
-  //       })
-  //       .then();
-  //     console.log('notes', notes);
-  //     setNotes(notes);
-  //     setNotesReady(true);
-  //   };
-
-  //   getNotes();
-  // }, []);
-
-  // useEffect(() => {
-  //   // const listen = async function (note: any, id: string) {
-  //   //   console.log('id', id);
-  //   //   console.log('note', { ...note, content: JSON.parse(note.content) });
-  //   //   if (!note) {
-  //   //     const newNotes = { ...notes };
-  //   //     delete newNotes[id];
-  //   //     setNotes(newNotes);
-  //   //     return;
-  //   //   }
-  //   //   // const data = await decrypt(note)
-  //   //   const data = { ...note, content: JSON.parse(note.content) };
-  //   //   const newNote = { [id]: data };
-  //   //   const newNotes = { ...notes, newNote };
-  //   //   setNotes(newNotes);
-  //   // };
-
-  //   getUser()
-  //     ?.get('notes')
-  //     .map()
-  //     // .on(listen)
-  //     .on(
-  //       (data: any) => {
-  //         console.log('on data', data);
-  //         if (data) {
-  //           // @ts-ignore
-  //           setNotes(previousState => ({
-  //             ...previousState,
-  //             data,
-  //           }));
-  //           // setNotes({ [data.id]: { ...data, content: JSON.parse(data.content) } });
-  //           // setNotes([...notes, { ...data, content: JSON.parse(data.content) }]);
-  //         }
-
-  //         if (!notesReady) setNotesReady(true);
-  //       },
-  //       {
-  //         change: true,
-  //       },
-  //     );
-  //   console.log(notes);
-  //   return () => {
-  //     if (getUser()?.get('notes').off) getUser()?.get('notes').off();
-  //   };
-  // }, [notesReady, Boolean(notes)]);
+  // useEffect(() => {})
 
   // we may need to reauthenticate if session was loaded from the server
   const checkReauthenticate = async () => {
@@ -111,7 +44,6 @@ export default function useNotes() {
     await getUser()
       ?.get('notes')
       .map()
-      // .on(note => {
       .once(note => {
         if (note) {
           notes.push({ ...note, content: JSON.parse(note.content) });
@@ -136,6 +68,7 @@ export default function useNotes() {
 
       await getUser()?.get('notes').get(note.id).put(note).then();
 
+      // TODO: let Gun .on listener handle this alone?
       // Refresh the list of notes in the sidebar
       store.getState().upsertNote({ ...note, content: JSON.parse(note.content) });
 
@@ -157,6 +90,7 @@ export default function useNotes() {
 
         await getUser()?.get('notes').get(note.id).put(note).then();
 
+        // TODO: let Gun .on listener handle this alone?
         // Update updated_at locally
         store.getState().updateNote({ id: note.id, updated_at: note.updated_at });
       } catch (error) {
@@ -171,7 +105,7 @@ export default function useNotes() {
       await checkReauthenticate();
 
       // Update note titles in sidebar
-      store.getState().deleteNote(noteId);
+      // store.getState().deleteNote(noteId);
 
       await getUser()?.get('notes').get(noteId).put(null).then();
 

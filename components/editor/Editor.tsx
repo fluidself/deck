@@ -58,7 +58,8 @@ function Editor(props: Props) {
           withHtml(
             withBlockBreakout(
               withVoidElements(
-                withBlockReferences(withImages(withTags(withLinks(withNodeId(withHistory(withReact(createEditor()))))))),
+                // withBlockReferences(withImages(withTags(withLinks(withNodeId(withHistory(withReact(createEditor()))))))),
+                withBlockReferences(withTags(withLinks(withNodeId(withHistory(withReact(createEditor())))))),
               ),
             ),
           ),

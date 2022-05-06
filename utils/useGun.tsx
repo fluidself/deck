@@ -2,8 +2,12 @@ import React, { createContext, useContext, useRef, useEffect, useState } from 'r
 import type { IGunUserInstance, ISEAPair } from 'gun/types/sea';
 import Gun from 'gun/gun';
 import SEA from 'gun/sea';
+import 'gun/lib/radix';
+import 'gun/lib/radisk';
+import 'gun/lib/rindexed';
+import 'gun/lib/store';
+import 'gun/lib/then';
 import { encryptWithLit, decryptWithLit } from 'utils/encryption';
-import useIsMounted from './useIsMounted';
 
 interface GunUser {
   id: string;
@@ -64,18 +68,17 @@ export const GunProvider = ({ children, sessionUser }: Props) => {
   const [needsReauthentication, setNeedsReauthentication] =
     // string: username
     useState<string>();
-  const isMounted = useIsMounted();
 
   useEffect(() => {
     const initGun = async () => {
-      await Promise.all([
-        import('gun/lib/radix'),
-        import('gun/lib/radisk'),
-        import('gun/lib/rindexed'),
-        import('gun/lib/store'),
-        import('gun/lib/then'),
-        import('gun/sea'),
-      ]);
+      // await Promise.all([
+      //   import('gun/lib/radix'),
+      //   import('gun/lib/radisk'),
+      //   import('gun/lib/rindexed'),
+      //   import('gun/lib/store'),
+      //   import('gun/lib/then'),
+      //   import('gun/sea'),
+      // ]);
 
       if (!gunRef.current) {
         // @ts-ignore
@@ -112,34 +115,10 @@ export const GunProvider = ({ children, sessionUser }: Props) => {
 
         setIsReady(true);
       }
-
-      // @ts-ignore TODO
-      // gunRef.current.on('auth', async ({ root, sea, err }) => {
-      //   console.debug('gun user authed', root, sea, err);
-
-      //   const user: GunUser = {
-      //     id: await new Promise(resolve => {
-      //       gunRef.current
-      //         ?.get(`~${sea.pub}`)
-      //         .get('alias')
-      //         .once((v: any) => {
-      //           // @ts-ignore
-      //           resolve(v);
-      //         });
-      //     }),
-      //     pub: sea.pub,
-      //   };
-
-      //   if (!err) {
-      //     setIsAuthenticated(true);
-      //   }
-      // });
     };
 
-    if (isMounted()) {
-      initGun();
-    }
-  }, [isMounted]);
+    initGun();
+  }, []);
 
   // useEffect(() => {
   //   const getCreds = async () => {
