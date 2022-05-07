@@ -17,7 +17,7 @@ export default function useNotes() {
     query: { deckId },
   } = router;
 
-  // TODO: move .on handlers from AppLayout here?
+  // TODO: move .on handlers from AppLayout into useEffect here?
   // https://gun.eco/docs/API#-a-name-on-a-gun-on-callback-option-
   // https://stackoverflow.com/questions/43638938/updating-an-object-with-setstate-in-react
   // useEffect(() => {})
