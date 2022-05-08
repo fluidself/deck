@@ -4,6 +4,7 @@ import { useRouter } from 'next/router';
 import { useConnect } from 'wagmi';
 import { SiweMessage } from 'siwe';
 import { User } from 'types/supabase';
+import useGun from 'utils/useGun';
 
 type AuthContextType = {
   isLoaded: boolean;
@@ -23,6 +24,7 @@ function useProvideAuth(): AuthContextType {
     connect,
   ] = useConnect();
   const router = useRouter();
+  const { logout } = useGun();
   const [isLoaded, setIsLoaded] = useState<boolean>(false);
   const [signingIn, setSigningIn] = useState<boolean>(false);
   const [user, setUser] = useState<User | null>(null);
@@ -88,6 +90,7 @@ function useProvideAuth(): AuthContextType {
       method: 'POST',
     });
     await initUser();
+    await logout();
   };
 
   return {

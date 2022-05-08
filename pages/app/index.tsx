@@ -5,12 +5,9 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/router';
 import { useAccount } from 'wagmi';
 import { v4 as uuidv4 } from 'uuid';
-// import useSWR from 'swr';
 import { toast } from 'react-toastify';
 import { ironOptions } from 'constants/iron-session';
 import supabase from 'lib/supabase';
-import insertDeck from 'lib/api/insertDeck';
-import selectDecks from 'lib/api/selectDecks';
 import { Deck } from 'types/supabase';
 import useIsMounted from 'utils/useIsMounted';
 import { useAuth } from 'utils/useAuth';
@@ -28,14 +25,14 @@ export default function AppHome() {
   const router = useRouter();
   const [{ data: accountData }] = useAccount();
   const { user, isLoaded, signOut } = useAuth();
-  const { getUser, createUser, authenticate, logout } = useGun();
-  // const { data: decks } = useSWR(user ? 'decks' : null, () => selectDecks(user?.id), { revalidateOnFocus: false });
+  const { getUser, createUser, authenticate } = useGun();
   const [decks, setDecks] = useState<any>({});
   const [requestingAccess, setRequestingAccess] = useState<boolean>(false);
   const [creatingDeck, setCreatingDeck] = useState<boolean>(false);
   const [lookingForDeck, setLookingForDeck] = useState<boolean>(true);
-  // const [lookingForDeck, setLookingForDeck] = useState<boolean>(false);
   const isMounted = useIsMounted();
+
+  router.events.on('routeChangeStart', () => setLookingForDeck(true));
 
   useEffect(() => {
     // TODO: clean / DRY up and reuse for landing?
@@ -54,22 +51,21 @@ export default function AppHome() {
         })
         .then();
 
-      for (const [deckId, userId] of Object.entries(decks)) {
-        if (userId === user.id) {
-          const deckToAccess = await getUser()?.get(`deck/${deckId}`).then();
-          if (!deckToAccess) return;
+      if (Object.values(decks).includes(user.id)) {
+        const deckId = Object.keys(decks).find(id => decks[id] === user.id);
+        const deckToAccess = await getUser()?.get(`deck/${deckId}`).then();
+        if (!deckToAccess) return;
 
-          const { encryptedString, encryptedSymmetricKey, accessControlConditions } = deckToAccess;
-          const decryptedDeckKeypair = await decryptWithLit(
-            encryptedString,
-            encryptedSymmetricKey,
-            JSON.parse(accessControlConditions),
-          );
+        const { encryptedString, encryptedSymmetricKey, accessControlConditions } = deckToAccess;
+        const decryptedDeckKeypair = await decryptWithLit(
+          encryptedString,
+          encryptedSymmetricKey,
+          JSON.parse(accessControlConditions),
+        );
 
-          await authenticate(JSON.parse(decryptedDeckKeypair));
+        await authenticate(JSON.parse(decryptedDeckKeypair));
 
-          router.replace(`/app/${deckId}`);
-        }
+        router.replace(`/app/${deckId}`);
       }
 
       setLookingForDeck(false);

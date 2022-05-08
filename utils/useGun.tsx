@@ -28,8 +28,6 @@ interface Props {
 interface ContextValue {
   getGun: () => any;
   getUser: () => IGunUserInstance | undefined;
-  getCertificate: () => string | undefined;
-  setCertificate: (cert: string) => void;
   getAccessToken: () => string | undefined;
   setAccessToken: (token: string) => void;
   authenticate: (pair: ISEAPair) => Promise<any>;
@@ -38,15 +36,12 @@ interface ContextValue {
   createUser: () => Promise<any>;
   isReady: boolean;
   isAuthenticated: boolean;
-  needsReauthentication: string | undefined;
 }
 
 // TODO memo
 const GunContext = createContext<ContextValue>({
   getGun: () => undefined,
   getUser: () => undefined,
-  getCertificate: () => undefined,
-  setCertificate: () => {},
   getAccessToken: () => undefined,
   setAccessToken: () => {},
   authenticate: () => Promise.resolve(),
@@ -55,19 +50,14 @@ const GunContext = createContext<ContextValue>({
   createUser: () => Promise.resolve(),
   isReady: false,
   isAuthenticated: false,
-  needsReauthentication: undefined,
 });
 
 export const GunProvider = ({ children, sessionUser }: Props) => {
   const gunRef = useRef<any>();
   const userRef = useRef<any>();
-  const certificateRef = useRef<string>();
   const accessTokenRef = useRef<string>();
   const [isReady, setIsReady] = useState<boolean>(false);
   const [isAuthenticated, setIsAuthenticated] = useState<boolean>(false);
-  const [needsReauthentication, setNeedsReauthentication] =
-    // string: username
-    useState<string>();
 
   useEffect(() => {
     const initGun = async () => {
@@ -125,16 +115,6 @@ export const GunProvider = ({ children, sessionUser }: Props) => {
   //           .then(({ data }) => {
   //             // store token in app memory
   //             accessTokenRef.current = data.accessToken;
-  //           }),
-  //         axios
-  //           .post(`/api/private/certificates`, sessionUser, {
-  //             cancelToken: credsRequestCancelTokenRef.current.token,
-  //           })
-  //           .then(({ data }) => {
-  //             // store certificate in app memory
-  //             // TODO check if expiry isn't working or misconfigured
-  //             // TODO handle expired certificates
-  //             certificateRef.current = data.certificate;
   //           }),
   //       ]);
   //     } catch (err) {
@@ -204,16 +184,9 @@ export const GunProvider = ({ children, sessionUser }: Props) => {
   };
 
   const logout = async () => {
-    certificateRef.current = undefined;
     accessTokenRef.current = undefined;
-
     userRef.current?.leave();
-
     setIsAuthenticated(false);
-
-    // await fetch('/api/signout', {
-    //   method: 'POST',
-    // });
   };
 
   return (
@@ -221,17 +194,12 @@ export const GunProvider = ({ children, sessionUser }: Props) => {
       value={{
         getGun: () => gunRef.current,
         getUser: () => userRef.current,
-        getCertificate: () => certificateRef.current,
-        setCertificate: v => {
-          certificateRef.current = v;
-        },
         getAccessToken: () => accessTokenRef.current,
         setAccessToken: v => {
           accessTokenRef.current = v;
         },
         isReady,
         isAuthenticated,
-        needsReauthentication,
         createUser,
         authenticate,
         reauthenticateDeck,

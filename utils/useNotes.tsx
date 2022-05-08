@@ -30,6 +30,7 @@ export default function useNotes() {
           async (note: any, id: string) => {
             // @ts-ignore
             const pair = getUser()?._.sea;
+            if (!pair) return;
             const storeNotes = Object.keys(store.getState().notes);
             const openNoteIds = store.getState().openNoteIds;
             if (id && note) {
