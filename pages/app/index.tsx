@@ -4,16 +4,15 @@ import { withIronSessionSsr } from 'iron-session/next';
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/router';
 import { useAccount } from 'wagmi';
-import { v4 as uuidv4 } from 'uuid';
 import { toast } from 'react-toastify';
 import { ironOptions } from 'constants/iron-session';
 import supabase from 'lib/supabase';
-import { Deck } from 'types/supabase';
+import { Deck } from 'types/gun';
 import useIsMounted from 'utils/useIsMounted';
 import { useAuth } from 'utils/useAuth';
 import useGun from 'utils/useGun';
-import { encryptWithLit, decryptWithLit, encrypt } from 'utils/encryption';
-import createOnboardingNotes from 'utils/createOnboardingNotes';
+import useDeck from 'utils/useDeck';
+import { decryptWithLit, decrypt } from 'utils/encryption';
 import { AuthSig } from 'types/lit';
 import HomeHeader from 'components/home/HomeHeader';
 import RequestDeckAccess from 'components/home/RequestDeckAccess';
@@ -25,54 +24,12 @@ export default function AppHome() {
   const router = useRouter();
   const [{ data: accountData }] = useAccount();
   const { user, isLoaded, signOut } = useAuth();
-  const { getUser, createUser, authenticate } = useGun();
-  const [decks, setDecks] = useState<any>({});
+  const { getUser, authenticate } = useGun();
+  const { decks, decksReady, insertDeck } = useDeck();
   const [requestingAccess, setRequestingAccess] = useState<boolean>(false);
   const [creatingDeck, setCreatingDeck] = useState<boolean>(false);
   const [lookingForDeck, setLookingForDeck] = useState<boolean>(true);
   const isMounted = useIsMounted();
-
-  router.events.on('routeChangeStart', () => setLookingForDeck(true));
-
-  useEffect(() => {
-    // TODO: clean / DRY up and reuse for landing?
-    const lookForUserDeck = async () => {
-      if (!process.env.NEXT_PUBLIC_APP_ACCESS_KEY_PAIR || !user?.id) return;
-      await authenticate(JSON.parse(process.env.NEXT_PUBLIC_APP_ACCESS_KEY_PAIR));
-      const decks: any = {};
-      await getUser()
-        ?.get(`decks`)
-        .map()
-        .once((userId, deckId) => {
-          // TODO
-          if (typeof userId === 'string') {
-            decks[deckId] = userId;
-          }
-        })
-        .then();
-
-      if (Object.values(decks).includes(user.id)) {
-        const deckId = Object.keys(decks).find(id => decks[id] === user.id);
-        const deckToAccess = await getUser()?.get(`deck/${deckId}`).then();
-        if (!deckToAccess) return;
-
-        const { encryptedString, encryptedSymmetricKey, accessControlConditions } = deckToAccess;
-        const decryptedDeckKeypair = await decryptWithLit(
-          encryptedString,
-          encryptedSymmetricKey,
-          JSON.parse(accessControlConditions),
-        );
-
-        await authenticate(JSON.parse(decryptedDeckKeypair));
-
-        router.replace(`/app/${deckId}`);
-      }
-
-      setLookingForDeck(false);
-    };
-
-    lookForUserDeck();
-  }, [user]);
 
   useEffect(() => {
     const initLit = async () => {
@@ -95,114 +52,97 @@ export default function AppHome() {
     };
   }, [accountData?.connector, signOut]);
 
+  useEffect(() => {
+    // console.log(sessionStorage.getItem('pair'));
+    router.events.on('routeChangeStart', () => setLookingForDeck(true));
+    const lookForUserDeck = async () => {
+      if (!process.env.NEXT_PUBLIC_APP_ACCESS_KEY_PAIR || !user?.id) return;
+      const deckObjs: Deck[] = Object.values(decks);
+      if (decksReady && deckObjs.length && deckObjs.find(deck => deck.user === user.id)) {
+        const deckId = deckObjs.find(deck => deck.user === user.id)?.id ?? '';
+        const encryptedDeck = await getUser()?.get('decks').get(deckId).then();
+        const decryptedDeck = await decrypt(encryptedDeck, { pair: JSON.parse(process.env.NEXT_PUBLIC_APP_ACCESS_KEY_PAIR) });
+
+        const { encryptedString, encryptedSymmetricKey, accessControlConditions } = decryptedDeck;
+        const decryptedDeckKeypair = await decryptWithLit(encryptedString, encryptedSymmetricKey, accessControlConditions);
+
+        await authenticate(JSON.parse(decryptedDeckKeypair));
+
+        router.replace(`/app/${deckId}`);
+      }
+
+      setLookingForDeck(false);
+    };
+
+    if (decksReady) {
+      lookForUserDeck();
+    }
+  }, [user, decks, decksReady]);
+
   const createNewDeck = async (deckName: string) => {
-    if (!user || !process.env.NEXT_PUBLIC_APP_ACCESS_KEY_PAIR) return;
-
-    // TODO: try/catch or other error handling
-    // TODO: does this belong in some hook?
-
-    const deckId = uuidv4();
-    const deckKeypair = await createUser();
-    const accessControlConditions = [
-      {
-        contractAddress: '',
-        standardContractType: '',
-        chain: 'ethereum',
-        method: '',
-        parameters: [':userAddress'],
-        returnValueTest: {
-          comparator: '=',
-          value: user.id,
-        },
-      },
-    ];
-    const [encryptedStringBase64, encryptedSymmetricKeyBase64] = await encryptWithLit(
-      JSON.stringify(deckKeypair),
-      accessControlConditions,
-    );
-
-    await authenticate(JSON.parse(process.env.NEXT_PUBLIC_APP_ACCESS_KEY_PAIR));
-    await getUser()
-      ?.get(`deck/${deckId}`)
-      .put({
-        id: deckId,
-        name: deckName,
-        encryptedString: encryptedStringBase64,
-        encryptedSymmetricKey: encryptedSymmetricKeyBase64,
-        accessControlConditions: JSON.stringify(accessControlConditions),
-      })
-      .then();
-    await getUser()?.get('decks').get(deckId).put(user.id).then();
-
-    await authenticate(deckKeypair);
-    const onboardingNotes = createOnboardingNotes();
-    for (const note of onboardingNotes) {
-      const encryptedNote = await encrypt(note, { pair: deckKeypair });
-      await getUser()?.get('notes').get(note.id).put(encryptedNote).then();
+    const deckId = await insertDeck(deckName);
+    if (!deckId) {
+      toast.error('There was an error creating the DECK');
+      return;
     }
 
     toast.success(`Successfully created ${deckName}`);
     setCreatingDeck(false);
     router.push(`/app/${deckId}`);
-
-    // if (!deck) {
-    //   toast.error('There was an error creating the DECK');
-    //   return;
-    // }
   };
 
-  const verifyAccess = async (requestedDeck: string) => {
-    if (!requestedDeck) return;
+  // const verifyAccess = async (requestedDeck: string) => {
+  //   if (!requestedDeck) return;
 
-    // if (decks?.find(deck => deck.id === requestedDeck)) {
-    //   toast.success('You own that DECK!');
-    //   setRequestingAccess(false);
-    //   router.push(`/app/${requestedDeck}`);
-    //   return;
-    // }
+  //   // if (decks?.find(deck => deck.id === requestedDeck)) {
+  //   //   toast.success('You own that DECK!');
+  //   //   setRequestingAccess(false);
+  //   //   router.push(`/app/${requestedDeck}`);
+  //   //   return;
+  //   // }
 
-    const { data: accessParams } = await supabase.from<Deck>('decks').select('access_params').eq('id', requestedDeck).single();
-    if (!accessParams?.access_params) {
-      toast.error('Unable to verify access.');
-      return;
-    }
+  //   const { data: accessParams } = await supabase.from<Deck>('decks').select('access_params').eq('id', requestedDeck).single();
+  //   if (!accessParams?.access_params) {
+  //     toast.error('Unable to verify access.');
+  //     return;
+  //   }
 
-    const { resource_id: resourceId, access_control_conditions: accessControlConditions } = accessParams?.access_params || {};
-    if (!resourceId || !accessControlConditions || !accessControlConditions[0].chain) {
-      toast.error('Unable to verify access.');
-      return;
-    }
+  //   const { resource_id: resourceId, access_control_conditions: accessControlConditions } = accessParams?.access_params || {};
+  //   if (!resourceId || !accessControlConditions || !accessControlConditions[0].chain) {
+  //     toast.error('Unable to verify access.');
+  //     return;
+  //   }
 
-    try {
-      const chain = accessControlConditions[0].chain;
-      const authSig: AuthSig = await LitJsSdk.checkAndSignAuthMessage({ chain });
-      const jwt = await window.litNodeClient.getSignedToken({
-        accessControlConditions,
-        chain,
-        authSig,
-        resourceId,
-      });
+  //   try {
+  //     const chain = accessControlConditions[0].chain;
+  //     const authSig: AuthSig = await LitJsSdk.checkAndSignAuthMessage({ chain });
+  //     const jwt = await window.litNodeClient.getSignedToken({
+  //       accessControlConditions,
+  //       chain,
+  //       authSig,
+  //       resourceId,
+  //     });
 
-      const response = await fetch('/api/verify-jwt', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ jwt, requestedDeck }),
-      });
+  //     const response = await fetch('/api/verify-jwt', {
+  //       method: 'POST',
+  //       headers: {
+  //         'Content-Type': 'application/json',
+  //       },
+  //       body: JSON.stringify({ jwt, requestedDeck }),
+  //     });
 
-      if (!response.ok) return;
+  //     if (!response.ok) return;
 
-      toast.success('Access to DECK is granted.');
-      setRequestingAccess(false);
-      router.push(`/app/${requestedDeck}`);
-    } catch (e: any) {
-      console.error(e);
-      toast.error('Unable to verify access.');
-    }
-  };
+  //     toast.success('Access to DECK is granted.');
+  //     setRequestingAccess(false);
+  //     router.push(`/app/${requestedDeck}`);
+  //   } catch (e: any) {
+  //     console.error(e);
+  //     toast.error('Unable to verify access.');
+  //   }
+  // };
 
-  if (lookingForDeck) {
+  if (lookingForDeck || !decksReady) {
     return <PageLoading />;
   }
 
@@ -231,7 +171,8 @@ export default function AppHome() {
               {requestingAccess ? (
                 <RequestDeckAccess
                   onCancel={() => setRequestingAccess(false)}
-                  onDeckAccessRequested={async (requestedDeck: string) => await verifyAccess(requestedDeck)}
+                  // onDeckAccessRequested={async (requestedDeck: string) => await verifyAccess(requestedDeck)}
+                  onDeckAccessRequested={async (requestedDeck: string) => {}}
                 />
               ) : (
                 <Button onClick={() => setRequestingAccess(true)}>Join a DECK</Button>
@@ -242,20 +183,26 @@ export default function AppHome() {
                   await authenticate(JSON.parse(process.env.NEXT_PUBLIC_APP_ACCESS_KEY_PAIR));
                   console.log('logged in as: ', getUser()?.is?.pub);
 
-                  const deckId = '1ef1fc3b-563b-49e5-86c5-f3619989cf68';
-                  const deckToAccess = await getUser()?.get(`deck/${deckId}`).then();
+                  getUser()
+                    ?.get('decks')
+                    .map()
+                    .once((deck, deckId) => console.log(deckId, deck));
+                  // .then();
+                  // console.log(decks);
+                  // const deckId = '1ef1fc3b-563b-49e5-86c5-f3619989cf68';
+                  // const deckToAccess = await getUser()?.get(`deck/${deckId}`).then();
 
-                  const { encryptedString, encryptedSymmetricKey, accessControlConditions } = deckToAccess;
-                  const decryptedDeckKeypair = await decryptWithLit(
-                    encryptedString,
-                    encryptedSymmetricKey,
-                    JSON.parse(accessControlConditions),
-                  );
+                  // const { encryptedString, encryptedSymmetricKey, accessControlConditions } = deckToAccess;
+                  // const decryptedDeckKeypair = await decryptWithLit(
+                  //   encryptedString,
+                  //   encryptedSymmetricKey,
+                  //   JSON.parse(accessControlConditions),
+                  // );
 
-                  await authenticate(JSON.parse(decryptedDeckKeypair));
-                  console.log('logged in as: ', getUser()?.is?.pub);
+                  // await authenticate(JSON.parse(decryptedDeckKeypair));
+                  // console.log('logged in as: ', getUser()?.is?.pub);
 
-                  router.push(`/app/${deckId}`);
+                  // router.push(`/app/${deckId}`);
                 }}
               >
                 Test Gun

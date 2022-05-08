@@ -91,6 +91,7 @@ function useProvideAuth(): AuthContextType {
     });
     await initUser();
     await logout();
+    router.push('/');
   };
 
   return {

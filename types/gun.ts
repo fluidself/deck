@@ -4,6 +4,15 @@ export type User = {
   id: string;
 };
 
+export type Deck = {
+  id: string;
+  name: string;
+  user: User['id'];
+  encryptedString: string;
+  encryptedSymmetricKey: string;
+  accessControlConditions: any[];
+};
+
 export type Note = {
   id: string;
   content: Descendant[];

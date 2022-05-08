@@ -67,6 +67,7 @@ export default function AppLayout(props: Props) {
     window.litNodeClient = client;
   };
 
+  // TODO: always runs twice on first load. figure out why
   const initData = useCallback(async () => {
     if (!window.litNodeClient && isMounted()) {
       await initLit();
