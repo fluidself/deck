@@ -5,6 +5,7 @@ import { store } from 'lib/store';
 import type { PickPartial } from 'types/utils';
 import type { Note } from 'types/gun';
 import useGun from 'utils/useGun';
+import { encrypt, decrypt } from 'utils/encryption';
 
 export type NoteUpdate = PickPartial<Note, 'content' | 'title' | 'created_at' | 'updated_at'>;
 
@@ -41,12 +42,15 @@ export default function useNotes() {
     await checkReauthenticate();
 
     const notes: Note[] = [];
+    // @ts-ignore
+    const pair = getUser()?._.sea;
     await getUser()
       ?.get('notes')
       .map()
-      .once(note => {
+      .once(async note => {
         if (note) {
-          notes.push({ ...note, content: JSON.parse(note.content) });
+          const decryptedNote = await decrypt(note, { pair });
+          notes.push(decryptedNote);
         }
       })
       .then();
@@ -58,6 +62,8 @@ export default function useNotes() {
     async (noteTitle: string, noteId: string = '') => {
       await checkReauthenticate();
 
+      // @ts-ignore
+      const pair = getUser()?._.sea;
       const note = {
         id: noteId || uuidv4(),
         title: noteTitle,
@@ -65,8 +71,8 @@ export default function useNotes() {
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString(),
       };
-
-      await getUser()?.get('notes').get(note.id).put(note).then();
+      const encryptedNote = await encrypt(note, { pair });
+      await getUser()?.get('notes').get(note.id).put(encryptedNote).then();
 
       // TODO: let Gun .on listener handle this alone?
       // Refresh the list of notes in the sidebar
@@ -84,11 +90,13 @@ export default function useNotes() {
       try {
         await checkReauthenticate();
 
+        // @ts-ignore
+        const pair = getUser()?._.sea;
         const note: any = { ...noteUpdate };
         if (note.content) note.content = JSON.stringify(note.content);
         note.updated_at = new Date().toISOString();
-
-        await getUser()?.get('notes').get(note.id).put(note).then();
+        const encryptedNote = await encrypt(note, { pair });
+        await getUser()?.get('notes').get(note.id).put(encryptedNote).then();
 
         // TODO: let Gun .on listener handle this alone?
         // Update updated_at locally

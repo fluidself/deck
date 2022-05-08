@@ -67,9 +67,14 @@ async function _mapDeep(data, map, opts) {
   }
 }
 
+const dateStringRegex =
+  /^(-?(?:[1-9][0-9]*)?[0-9]{4})-(1[0-2]|0[1-9])-(3[01]|0[1-9]|[12][0-9])T(2[0-3]|[01][0-9]):([0-5][0-9]):([0-5][0-9])(\.[0-9]+)?(Z|[+-](?:2[0-3]|[01][0-9]):[0-5][0-9])?$/;
+const uuidRegex = /^[0-9a-fA-F]{8}\b-[0-9a-fA-F]{4}\b-[0-9a-fA-F]{4}\b-[0-9a-fA-F]{4}\b-[0-9a-fA-F]{12}$/;
+
 const _encryptValue = async (value, { secret }) => {
-  if (value.startsWith('SEA{')) {
-    // Already encrypted
+  console.log('value', value);
+  if (value.startsWith('SEA{') || value.match(dateStringRegex) || value.match(uuidRegex)) {
+    // Already encrypted or no encryption necessary
     return value;
   }
   let data = await SEA.encrypt(value, secret);

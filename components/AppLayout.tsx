@@ -13,6 +13,7 @@ import { ProvideCurrentDeck } from 'utils/useCurrentDeck';
 import useHotkeys from 'utils/useHotkeys';
 import { useAuth } from 'utils/useAuth';
 import useGun from 'utils/useGun';
+import { decrypt } from 'utils/encryption';
 // import useDeck from 'utils/useDeck';
 import useNotes from 'utils/useNotes';
 import useIsMounted from 'utils/useIsMounted';
@@ -36,7 +37,7 @@ export default function AppLayout(props: Props) {
   const { user, isLoaded, signOut } = useAuth();
   const [{ data: accountData }] = useAccount();
   const { isReady, getUser } = useGun();
-  const { upsertNote: upsertDbNote } = useNotes();
+  const { upsertNote: upsertDbNote, getNotes } = useNotes();
   const [isPageLoaded, setIsPageLoaded] = useState(false);
   const isMounted = useIsMounted();
 
@@ -80,7 +81,7 @@ export default function AppLayout(props: Props) {
     // setDeckId(deckId);
 
     const notes = Object.values(store.getState().notes);
-    console.log('initData', notes);
+    console.log('initData notes', notes);
 
     // TODO: consistently fails because notes empty at this point.
     // Redirect to most recent note or first note in database
@@ -177,21 +178,25 @@ export default function AppLayout(props: Props) {
       ?.get('notes')
       .map()
       .on(
-        (note: any, id: string) => {
+        async (note: any, id: string) => {
+          // @ts-ignore
+          const pair = getUser()?._.sea;
           const storeNotes = Object.keys(store.getState().notes);
+          const openNoteIds = store.getState().openNoteIds;
           if (id && note) {
             // Note is new
             if (!storeNotes.includes(id)) {
               // console.log(`upsert note ${id}`);
-              upsertNote({ ...note, content: JSON.parse(note.content) });
+              const decryptedNote = await decrypt(note, { pair });
+              upsertNote(decryptedNote);
             } else {
               // TODO: fires very often. Can I narrow it down or improve puts?
               // Note is updated?
               // Don't update the note if it is currently open
-              const openNoteIds = store.getState().openNoteIds;
               if (storeNotes.includes(id) && !openNoteIds.includes(id)) {
                 // console.log(`update note ${id}`);
-                updateNote({ ...note, content: JSON.parse(note.content) });
+                const decryptedNote = await decrypt(note, { pair });
+                updateNote(decryptedNote);
               }
             }
           } else if (id && !note) {

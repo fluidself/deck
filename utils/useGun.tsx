@@ -7,7 +7,7 @@ import 'gun/lib/radisk';
 import 'gun/lib/rindexed';
 import 'gun/lib/store';
 import 'gun/lib/then';
-import { encryptWithLit, decryptWithLit } from 'utils/encryption';
+import { decryptWithLit } from 'utils/encryption';
 
 interface GunUser {
   id: string;
@@ -71,15 +71,6 @@ export const GunProvider = ({ children, sessionUser }: Props) => {
 
   useEffect(() => {
     const initGun = async () => {
-      // await Promise.all([
-      //   import('gun/lib/radix'),
-      //   import('gun/lib/radisk'),
-      //   import('gun/lib/rindexed'),
-      //   import('gun/lib/store'),
-      //   import('gun/lib/then'),
-      //   import('gun/sea'),
-      // ]);
-
       if (!gunRef.current) {
         // @ts-ignore
         Gun.on('opt', ctx => {
@@ -260,17 +251,3 @@ export default function useGun() {
 
   return context;
 }
-
-// https://github.com/amark/gun/wiki/Snippets#saving-arrays-in-gun
-export const getIndexedObjectFromArray = (arr: any[]) => {
-  return arr.reduce((acc, item) => {
-    return {
-      ...acc,
-      [item.id]: item,
-    };
-  }, {});
-};
-
-export const getArrayFromIndexedObject = (indexedObj: any) => {
-  return Object.values(indexedObj);
-};

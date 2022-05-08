@@ -10,6 +10,10 @@ import _zipObject from 'lodash/zipObject';
 import type { AuthSig } from 'types/lit';
 
 // SEA encryption / decryption
+const DATE_STRING_REGEX =
+  /^(-?(?:[1-9][0-9]*)?[0-9]{4})-(1[0-2]|0[1-9])-(3[01]|0[1-9]|[12][0-9])T(2[0-3]|[01][0-9]):([0-5][0-9]):([0-5][0-9])(\.[0-9]+)?(Z|[+-](?:2[0-3]|[01][0-9]):[0-5][0-9])?$/;
+const UUID_REGEX = /^[0-9a-fA-F]{8}\b-[0-9a-fA-F]{4}\b-[0-9a-fA-F]{4}\b-[0-9a-fA-F]{4}\b-[0-9a-fA-F]{12}$/;
+
 interface CryptOptionsBase {
   pair?: ISEAPair;
   secret?: any;
@@ -63,7 +67,6 @@ async function _crypt(data: any, map: any, opts: CryptOptions): Promise<any> {
   return await _mapDeep(data, map, { secret });
 }
 
-// TODO: Also reuse elsewhere?
 /**
  * Traverse data and map.
  * @param data
@@ -112,8 +115,8 @@ const _encryptValue = async (
     secret: any;
   },
 ): Promise<string> => {
-  if (value.startsWith('SEA{')) {
-    // Already encrypted
+  if (value.toString().startsWith('SEA{') || value.toString().match(DATE_STRING_REGEX) || value.toString().match(UUID_REGEX)) {
+    // Already encrypted or no encryption necessary
     return value;
   }
   let data: string | undefined = await SEA.encrypt(value, secret);
@@ -131,7 +134,7 @@ const _decryptValue = async (
     secret: any;
   },
 ): Promise<string> => {
-  if (!data.startsWith('SEA{')) {
+  if (!data.toString().startsWith('SEA{')) {
     // No decryption necessary
     return data;
   }

@@ -15,7 +15,7 @@ import { Deck } from 'types/supabase';
 import useIsMounted from 'utils/useIsMounted';
 import { useAuth } from 'utils/useAuth';
 import useGun from 'utils/useGun';
-import { encryptWithLit, decryptWithLit } from 'utils/encryption';
+import { encryptWithLit, decryptWithLit, encrypt } from 'utils/encryption';
 import createOnboardingNotes from 'utils/createOnboardingNotes';
 import { AuthSig } from 'types/lit';
 import HomeHeader from 'components/home/HomeHeader';
@@ -34,6 +34,7 @@ export default function AppHome() {
   const [requestingAccess, setRequestingAccess] = useState<boolean>(false);
   const [creatingDeck, setCreatingDeck] = useState<boolean>(false);
   const [lookingForDeck, setLookingForDeck] = useState<boolean>(true);
+  // const [lookingForDeck, setLookingForDeck] = useState<boolean>(false);
   const isMounted = useIsMounted();
 
   useEffect(() => {
@@ -105,9 +106,7 @@ export default function AppHome() {
     // TODO: does this belong in some hook?
 
     const deckId = uuidv4();
-    console.log('deckId', deckId);
     const deckKeypair = await createUser();
-    console.log('deckKeypair', deckKeypair);
     const accessControlConditions = [
       {
         contractAddress: '',
@@ -127,7 +126,6 @@ export default function AppHome() {
     );
 
     await authenticate(JSON.parse(process.env.NEXT_PUBLIC_APP_ACCESS_KEY_PAIR));
-    // TODO: Do I need both of these?
     await getUser()
       ?.get(`deck/${deckId}`)
       .put({
@@ -138,23 +136,13 @@ export default function AppHome() {
         accessControlConditions: JSON.stringify(accessControlConditions),
       })
       .then();
-
     await getUser()?.get('decks').get(deckId).put(user.id).then();
 
-    // RE: indexing
-    // https://github.com/rococtz/gun_examples
-    // await getUser()?.get('decks').get(user.id).put(ref).then();
-
     await authenticate(deckKeypair);
-
-    // TODO: encrypt with SEA pair
     const onboardingNotes = createOnboardingNotes();
-    // TODO: rework?
-    // util functions in useGun?
-    // https://dev.to/negue/working-with-graph-structures-2006
-    // https://github.com/amark/gun/issues/231
     for (const note of onboardingNotes) {
-      await getUser()?.get('notes').get(note.id).put(note).then();
+      const encryptedNote = await encrypt(note, { pair: deckKeypair });
+      await getUser()?.get('notes').get(note.id).put(encryptedNote).then();
     }
 
     toast.success(`Successfully created ${deckName}`);
