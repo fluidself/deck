@@ -8,12 +8,10 @@ import classNames from 'classnames';
 import colors from 'tailwindcss/colors';
 import { useAccount } from 'wagmi';
 import { useStore, store, NoteTreeItem, getNoteTreeItem, Notes, SidebarTab } from 'lib/store';
-import type { Note } from 'types/gun';
 import { ProvideCurrentDeck } from 'utils/useCurrentDeck';
 import useHotkeys from 'utils/useHotkeys';
 import { useAuth } from 'utils/useAuth';
 import useGun from 'utils/useGun';
-import { decrypt } from 'utils/encryption';
 // import useDeck from 'utils/useDeck';
 import useNotes from 'utils/useNotes';
 import useIsMounted from 'utils/useIsMounted';
@@ -37,7 +35,7 @@ export default function AppLayout(props: Props) {
   const { user, isLoaded, signOut } = useAuth();
   const [{ data: accountData }] = useAccount();
   const { isReady, getUser } = useGun();
-  const { upsertNote: upsertDbNote, getNotes } = useNotes();
+  const { upsertNote: upsertDbNote, notesReady } = useNotes();
   const [isPageLoaded, setIsPageLoaded] = useState(false);
   const isMounted = useIsMounted();
 
@@ -60,7 +58,6 @@ export default function AppLayout(props: Props) {
     }
   }, [isPageLoaded, isLoaded, user]);
 
-  const setNotes = useStore(state => state.setNotes);
   const setNoteTree = useStore(state => state.setNoteTree);
   // const setDeckId = useStore(state => state.setDeckId);
 
@@ -81,9 +78,8 @@ export default function AppLayout(props: Props) {
     // setDeckId(deckId);
 
     const notes = Object.values(store.getState().notes);
-    console.log('initData notes', notes);
+    console.log('initData', notes);
 
-    // TODO: consistently fails because notes empty at this point.
     // Redirect to most recent note or first note in database
     if (router.pathname.match(/^\/app\/[^/]+$/i)) {
       const openNoteIds = store.getState().openNoteIds;
@@ -101,17 +97,9 @@ export default function AppLayout(props: Props) {
       return;
     }
 
-    // Set notes
-    // const notesAsObj = notes.reduce<Record<Note['id'], Note>>((acc, note) => {
-    //   acc[note.id] = note;
-    //   return acc;
-    // }, {});
-    // const notesAsObj = dbNotes;
-    // setNotes(notesAsObj);
-    const notesAsObj = store.getState().notes;
-
-    // Set note tree
+    // Handle note tree
     const storedNoteTree = await getUser()?.get('note_tree').then();
+    const notesAsObj = store.getState().notes;
 
     if (storedNoteTree && typeof storedNoteTree !== 'undefined') {
       const noteTree: NoteTreeItem[] = [...JSON.parse(storedNoteTree)];
@@ -132,18 +120,17 @@ export default function AppLayout(props: Props) {
     }
 
     setIsPageLoaded(true);
-  }, [deckId, router, setNotes, setNoteTree]);
+  }, [deckId, router, setNoteTree]);
 
   useEffect(() => {
     if (isLoaded && !user) {
       // Redirect to root page if there is no user logged in
       router.replace('/');
-    } else if (!isPageLoaded && isLoaded && user) {
+    } else if (!isPageLoaded && isLoaded && user && notesReady) {
       // Initialize data if there is a user and the data has not been initialized yet
       initData();
     }
-    // }, [router, user, isLoaded, isPageLoaded, initData, dbNotes]);
-  }, [router, user, isLoaded, isPageLoaded, initData]);
+  }, [router, user, isLoaded, isPageLoaded, notesReady, initData]);
 
   const [isFindOrCreateModalOpen, setIsFindOrCreateModalOpen] = useState(false);
   // const [isSettingsOpen, setIsSettingsOpen] = useState(false);
@@ -153,10 +140,6 @@ export default function AppLayout(props: Props) {
   const setIsSidebarOpen = useStore(state => state.setIsSidebarOpen);
   const setIsPageStackingOn = useStore(state => state.setIsPageStackingOn);
   const setSidebarTab = useStore(state => state.setSidebarTab);
-
-  const upsertNote = useStore(state => state.upsertNote);
-  const updateNote = useStore(state => state.updateNote);
-  const deleteNote = useStore(state => state.deleteNote);
 
   const hasHydrated = useStore(state => state._hasHydrated);
   useEffect(() => {
@@ -169,61 +152,6 @@ export default function AppLayout(props: Props) {
       setIsPageStackingOn(false);
     }
   }, [setIsSidebarOpen, setIsPageStackingOn, hasHydrated]);
-
-  useEffect(() => {
-    // Subscribe to note changes for the current DECK
-    // TODO: move to useNotes hook?
-    // https://gun.eco/docs/API#-a-name-on-a-gun-on-callback-option-
-    getUser()
-      ?.get('notes')
-      .map()
-      .on(
-        async (note: any, id: string) => {
-          // @ts-ignore
-          const pair = getUser()?._.sea;
-          const storeNotes = Object.keys(store.getState().notes);
-          const openNoteIds = store.getState().openNoteIds;
-          if (id && note) {
-            // Note is new
-            if (!storeNotes.includes(id)) {
-              // console.log(`upsert note ${id}`);
-              const decryptedNote = await decrypt(note, { pair });
-              upsertNote(decryptedNote);
-            } else {
-              // TODO: fires very often. Can I narrow it down or improve puts?
-              // Note is updated?
-              // Don't update the note if it is currently open
-              if (storeNotes.includes(id) && !openNoteIds.includes(id)) {
-                // console.log(`update note ${id}`);
-                const decryptedNote = await decrypt(note, { pair });
-                updateNote(decryptedNote);
-              }
-            }
-          } else if (id && !note) {
-            // Note is deleted
-            if (storeNotes.includes(id)) {
-              // console.log(`delete note ${id}`);
-              deleteNote(id);
-            }
-          }
-        },
-        { change: true },
-      );
-
-    // getUser()
-    //   ?.get('note_tree')
-    //   .on((dbNoteTree: any) => {
-    //     if (dbNoteTree) {
-    //       const noteTree: NoteTreeItem[] = [...JSON.parse(dbNoteTree)];
-    //       console.log('on note_tree', noteTree);
-    //     }
-    //   });
-
-    return () => {
-      getUser()?.get('notes').off();
-      // getUser()?.get('note_tree').off();
-    };
-  }, [getUser, upsertNote, updateNote, deleteNote, router]);
 
   // TODO: figure out a less hacky way to transmit this update?
   // editor/plugins/withAutoMarkdown/handleInlineShortcuts.ts

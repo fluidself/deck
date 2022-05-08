@@ -1,27 +1,72 @@
 import { useRouter } from 'next/router';
 import { useState, useEffect, useCallback } from 'react';
 import { v4 as uuidv4 } from 'uuid';
-import { store } from 'lib/store';
+import { store, useStore } from 'lib/store';
 import type { PickPartial } from 'types/utils';
 import type { Note } from 'types/gun';
-import useGun from 'utils/useGun';
 import { encrypt, decrypt } from 'utils/encryption';
+import useGun from 'utils/useGun';
 
 export type NoteUpdate = PickPartial<Note, 'content' | 'title' | 'created_at' | 'updated_at'>;
 
 export default function useNotes() {
-  const { isReady, isAuthenticated, getGun, getUser, reauthenticateDeck } = useGun();
-  // const [notes, setNotes] = useState<any>({});
-  // const [notesReady, setNotesReady] = useState<boolean>(false);
+  const { getUser, reauthenticateDeck } = useGun();
+  const [notesReady, setNotesReady] = useState<boolean>(false);
   const router = useRouter();
   const {
     query: { deckId },
   } = router;
 
-  // TODO: move .on handlers from AppLayout into useEffect here?
-  // https://gun.eco/docs/API#-a-name-on-a-gun-on-callback-option-
-  // https://stackoverflow.com/questions/43638938/updating-an-object-with-setstate-in-react
-  // useEffect(() => {})
+  const upsertStoreNote = useStore(state => state.upsertNote);
+  const updateStoreNote = useStore(state => state.updateNote);
+  const deleteStoreNote = useStore(state => state.deleteNote);
+
+  useEffect(() => {
+    const initData = async () => {
+      getUser()
+        ?.get('notes')
+        .map()
+        .on(
+          async (note: any, id: string) => {
+            // @ts-ignore
+            const pair = getUser()?._.sea;
+            const storeNotes = Object.keys(store.getState().notes);
+            const openNoteIds = store.getState().openNoteIds;
+            if (id && note) {
+              // Note is new
+              if (!storeNotes.includes(id)) {
+                // console.log(`upsert note ${id}`);
+                const decryptedNote = await decrypt(note, { pair });
+                upsertStoreNote(decryptedNote);
+              } else {
+                // TODO: fires very often. Can I narrow it down or improve puts?
+                // Note is updated?
+                // Don't update the note if it is currently open
+                if (storeNotes.includes(id) && !openNoteIds.includes(id)) {
+                  // console.log(`update note ${id}`);
+                  const decryptedNote = await decrypt(note, { pair });
+                  updateStoreNote(decryptedNote);
+                }
+              }
+            } else if (id && !note) {
+              // Note is deleted
+              if (storeNotes.includes(id)) {
+                // console.log(`delete note ${id}`);
+                deleteStoreNote(id);
+              }
+            }
+          },
+          { change: true },
+        );
+    };
+    initData();
+    // TODO: better way to handle this
+    setTimeout(() => setNotesReady(true), 300);
+
+    return () => {
+      getUser()?.get('notes').off();
+    };
+  }, [getUser, upsertStoreNote, updateStoreNote, deleteStoreNote, deckId, setNotesReady]);
 
   // we may need to reauthenticate if session was loaded from the server
   const checkReauthenticate = async () => {
@@ -30,7 +75,6 @@ export default function useNotes() {
 
     if (!gunUser) {
       try {
-        console.log('reauthenticating DECK');
         await reauthenticateDeck(deckId);
       } catch (err) {
         console.error(err);
@@ -76,7 +120,7 @@ export default function useNotes() {
 
       // TODO: let Gun .on listener handle this alone?
       // Refresh the list of notes in the sidebar
-      store.getState().upsertNote({ ...note, content: JSON.parse(note.content) });
+      // store.getState().upsertNote({ ...note, content: JSON.parse(note.content) });
 
       await getUser()?.get('note_tree').put(JSON.stringify(store.getState().noteTree)).then();
 
@@ -100,7 +144,7 @@ export default function useNotes() {
 
         // TODO: let Gun .on listener handle this alone?
         // Update updated_at locally
-        store.getState().updateNote({ id: note.id, updated_at: note.updated_at });
+        // store.getState().updateNote({ id: note.id, updated_at: note.updated_at });
       } catch (error) {
         console.error(error);
       }
@@ -123,8 +167,7 @@ export default function useNotes() {
   );
 
   return {
-    // notes,
-    // notesReady,
+    notesReady,
     getNotes,
     upsertNote,
     updateNote,
