@@ -1,11 +1,18 @@
 import { withIronSessionSsr } from 'iron-session/next';
 import { ironOptions } from 'constants/iron-session';
+import type { ISEAPair } from 'gun/types/sea';
 import OpenSidebarButton from 'components/sidebar/OpenSidebarButton';
 import checkProtectedPageAuth from 'utils/checkProtectedPageAuth';
 import { useStore } from 'lib/store';
+import { useEffect } from 'react';
 
-export default function DeckHome() {
+export default function DeckHome({ gun }: { gun: ISEAPair }) {
   const isSidebarOpen = useStore(state => state.isSidebarOpen);
+  const setDeckPair = useStore(state => state.setDeckPair);
+
+  useEffect(() => {
+    setDeckPair(gun);
+  }, []);
 
   return (
     <div className="flex items-center justify-center flex-1 w-full p-12">
@@ -22,5 +29,5 @@ export const getServerSideProps = withIronSessionSsr(async function ({ params, r
   // const authorized = await checkProtectedPageAuth(deckId, user, allowedDeck);
   const authorized = user && gun ? true : false;
 
-  return authorized ? { props: {} } : { redirect: { destination: '/', permanent: false } };
+  return authorized ? { props: { gun } } : { redirect: { destination: '/', permanent: false } };
 }, ironOptions);

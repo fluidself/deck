@@ -3,7 +3,7 @@ import createVanilla from 'zustand/vanilla';
 import { persist, StateStorage, StoreApiWithPersist } from 'zustand/middleware';
 import produce, { Draft } from 'immer';
 import localforage from 'localforage';
-// import type { Note } from 'types/supabase';
+import type { ISEAPair } from 'gun/types/sea';
 import type { Note } from 'types/gun';
 import { caseInsensitiveStringEqual } from 'utils/string';
 import { Backlink } from 'editor/backlinks/useBacklinks';
@@ -69,6 +69,8 @@ export type Store = {
   setSidebarSearchQuery: Setter<string>;
   deckId: string;
   setDeckId: Setter<string>;
+  deckPair: ISEAPair;
+  setDeckPair: Setter<ISEAPair>;
 } & UserSettings;
 
 type FunctionPropertyNames<T> = {
@@ -210,6 +212,8 @@ export const store = createVanilla<Store, SetState<Store>, GetState<Store>, Stor
       setSidebarSearchQuery: setter(set, 'sidebarSearchQuery'),
       deckId: '',
       setDeckId: setter(set, 'deckId'),
+      deckPair: { pub: '', priv: '', epub: '', epriv: '' },
+      setDeckPair: setter(set, 'deckPair'),
       ...createUserSettingsSlice(set),
     })),
     {

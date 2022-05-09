@@ -22,7 +22,7 @@ function useProvideDeck(deckId: string): CurrentDeck {
       body: JSON.stringify({ deckId }),
     });
 
-    setDeck({ deck: { id: deckId } });
+    setDeck({ id: deckId });
   };
 
   useEffect(() => {

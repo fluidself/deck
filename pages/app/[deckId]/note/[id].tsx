@@ -3,6 +3,7 @@ import { useEffect, useState } from 'react';
 import Head from 'next/head';
 import Link from 'next/link';
 import { useRouter } from 'next/router';
+import type { ISEAPair } from 'gun/types/sea';
 import { Path } from 'slate';
 import { ironOptions } from 'constants/iron-session';
 import Note from 'components/Note';
@@ -12,7 +13,7 @@ import { queryParamToArray } from 'utils/url';
 import useBlockBacklinks from 'editor/backlinks/useBlockBacklinks';
 import checkProtectedPageAuth from 'utils/checkProtectedPageAuth';
 
-export default function NotePage() {
+export default function NotePage({ gun }: { gun: ISEAPair }) {
   const router = useRouter();
   const {
     query: { id: noteId, stack: stackQuery },
@@ -20,7 +21,12 @@ export default function NotePage() {
 
   const openNoteIds = useStore(state => state.openNoteIds);
   const setOpenNoteIds = useStore(state => state.setOpenNoteIds);
+  const setDeckPair = useStore(state => state.setDeckPair);
   const prevOpenNoteIds = usePrevious(openNoteIds);
+
+  useEffect(() => {
+    setDeckPair(gun);
+  }, []);
 
   const pageTitle = useStore(state => {
     if (!noteId || typeof noteId !== 'string' || !state.notes[noteId]?.title) {
@@ -136,5 +142,5 @@ export const getServerSideProps = withIronSessionSsr(async function ({ params, r
   // const authorized = await checkProtectedPageAuth(deckId, user, allowedDeck);
   const authorized = user && gun ? true : false;
 
-  return authorized ? { props: {} } : { redirect: { destination: '/', permanent: false } };
+  return authorized ? { props: { gun } } : { redirect: { destination: '/', permanent: false } };
 }, ironOptions);

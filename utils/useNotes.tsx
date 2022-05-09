@@ -1,6 +1,7 @@
 import { useRouter } from 'next/router';
 import { useState, useEffect, useCallback } from 'react';
 import { v4 as uuidv4 } from 'uuid';
+import type { ISEAPair } from 'gun/types/sea';
 import { store, useStore } from 'lib/store';
 import type { PickPartial } from 'types/utils';
 import type { Note } from 'types/gun';
@@ -10,9 +11,10 @@ import useGun from 'utils/useGun';
 export type NoteUpdate = PickPartial<Note, 'content' | 'title' | 'created_at' | 'updated_at'>;
 
 export default function useNotes() {
-  const { getUser, reauthenticateDeck, isAuthenticated } = useGun();
+  const { getUser, authenticate, reauthenticateDeck, isAuthenticated } = useGun();
   const [notesReady, setNotesReady] = useState<boolean>(false);
   const router = useRouter();
+  // const [deckPair, setDeckPair] = useState<ISEAPair | null>(null);
   const {
     query: { deckId },
   } = router;
@@ -23,7 +25,7 @@ export default function useNotes() {
 
   useEffect(() => {
     const initData = async () => {
-      await checkReauthenticate();
+      // await checkReauthenticate();
 
       getUser()
         ?.get('notes')
@@ -32,7 +34,7 @@ export default function useNotes() {
           async (note: any, id: string) => {
             // @ts-ignore
             const pair = getUser()?._.sea;
-            if (!pair) return;
+            if (!pair || pair.pub === JSON.parse(process.env.NEXT_PUBLIC_APP_ACCESS_KEY_PAIR!).pub) return;
             const storeNotes = Object.keys(store.getState().notes);
             const openNoteIds = store.getState().openNoteIds;
             if (id && note) {
@@ -72,18 +74,40 @@ export default function useNotes() {
     };
   }, [getUser, deckId, setNotesReady, isAuthenticated]);
 
-  // we may need to reauthenticate if session was loaded from the server
   const checkReauthenticate = async () => {
     if (!deckId || typeof deckId !== 'string') return;
     const gunUser = getUser()?.is;
-
-    if (!gunUser) {
-      try {
-        await reauthenticateDeck(deckId);
-      } catch (err) {
-        console.error(err);
+    const deckPair: ISEAPair = store.getState().deckPair;
+    // TODO: keeps resetting to app user. in useDeck?
+    if (
+      !gunUser ||
+      typeof gunUser === 'undefined' ||
+      gunUser.pub === JSON.parse(process.env.NEXT_PUBLIC_APP_ACCESS_KEY_PAIR!).pub
+    ) {
+      if (deckPair.pub !== '') {
+        console.log('deckPair', deckPair);
+        await authenticate(deckPair);
+        return;
+      } else {
+        try {
+          await reauthenticateDeck(deckId);
+        } catch (err) {
+          console.error(err);
+        }
       }
     }
+    // if (
+    //   !gunUser ||
+    //   typeof gunUser === 'undefined' ||
+    //   gunUser.pub === JSON.parse(process.env.NEXT_PUBLIC_APP_ACCESS_KEY_PAIR!).pub
+    // ) {
+    //   try {
+    //     const pair = await reauthenticateDeck(deckId);
+    //     setDeckPair(pair);
+    //   } catch (err) {
+    //     console.error(err);
+    //   }
+    // }
   };
 
   const getNotes = useCallback(async () => {

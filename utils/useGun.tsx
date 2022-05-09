@@ -25,7 +25,7 @@ interface ContextValue {
   getAccessToken: () => string | undefined;
   setAccessToken: (token: string) => void;
   authenticate: (pair: ISEAPair) => Promise<any>;
-  reauthenticateDeck: (deckId: string) => Promise<void>;
+  reauthenticateDeck: (deckId: string) => Promise<any>;
   logout: () => void;
   createUser: () => Promise<any>;
   isReady: boolean;
@@ -39,7 +39,7 @@ const GunContext = createContext<ContextValue>({
   getAccessToken: () => undefined,
   setAccessToken: () => {},
   authenticate: () => Promise.resolve(),
-  reauthenticateDeck: (deckId: string) => Promise.resolve(),
+  reauthenticateDeck: (deckId: string) => Promise.resolve(null),
   logout: () => {},
   createUser: () => Promise.resolve(),
   isReady: false,

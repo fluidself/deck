@@ -32,7 +32,7 @@ export default function AppHome() {
     const redirect = async () => {
       if (!process.env.NEXT_PUBLIC_APP_ACCESS_KEY_PAIR) return;
 
-      const deck: Deck = Object.values(decks)[0];
+      const deck: Deck = Object.values(decks)[1];
       const { encryptedString, encryptedSymmetricKey, accessControlConditions } = deck;
       const decryptedDeckKeypair = await decryptWithLit(encryptedString, encryptedSymmetricKey, accessControlConditions);
 

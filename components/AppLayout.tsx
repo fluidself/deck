@@ -12,7 +12,6 @@ import { ProvideCurrentDeck } from 'utils/useCurrentDeck';
 import useHotkeys from 'utils/useHotkeys';
 import { useAuth } from 'utils/useAuth';
 import useGun from 'utils/useGun';
-// import useDeck from 'utils/useDeck';
 import useNotes from 'utils/useNotes';
 import useIsMounted from 'utils/useIsMounted';
 import { isMobile } from 'utils/device';

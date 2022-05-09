@@ -11,7 +11,7 @@ import BlockBacklinks from '../backlinks/BlockBacklinks';
 import { getNumOfMatches } from '../backlinks/Backlinks';
 
 // const UPDATE_BLOCK_BACKLINKS_DEBOUNCE_MS = 500;
-const UPDATE_BLOCK_BACKLINKS_DEBOUNCE_MS = 1500;
+const UPDATE_BLOCK_BACKLINKS_DEBOUNCE_MS = 4000;
 
 type BacklinksPopoverProps = {
   element: ReferenceableBlockElement;

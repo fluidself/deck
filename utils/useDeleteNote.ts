@@ -42,7 +42,7 @@ export default function useDeleteNote(noteId: string) {
       promises.push(updateNote(data));
     }
     await Promise.all(promises);
-  }, [router, noteId, openNoteIds]);
+  }, [router, noteId, openNoteIds, deleteNote, updateNote]);
 
   return onDeleteClick;
 }

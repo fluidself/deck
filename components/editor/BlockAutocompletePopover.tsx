@@ -9,8 +9,6 @@ import { useCurrentDeck } from 'utils/useCurrentDeck';
 import { createNodeId } from 'editor/plugins/withNodeId';
 import { isReferenceableBlockElement } from 'editor/checks';
 import { store } from 'lib/store';
-import supabase from 'lib/supabase';
-import { Note } from 'types/supabase';
 import useDebounce from 'utils/useDebounce';
 import useNotes from 'utils/useNotes';
 import EditorPopover from './EditorPopover';
@@ -69,11 +67,14 @@ export default function BlockAutocompletePopover() {
     setSelectedOptionIndex(0);
   }, []);
 
+  let isMounted = true;
+
   const getRegexResult = useCallback(() => {
     const REGEX = /(?:^|\s)(\(\()(.+)/;
     const { selection } = editor;
 
     const returnValue: { result: RegExpMatchArray | null; onOwnLine: boolean } = { result: null, onOwnLine: false };
+    if (!isMounted) return returnValue;
 
     if (!selection || !Range.isCollapsed(selection)) {
       return returnValue;
@@ -108,6 +109,10 @@ export default function BlockAutocompletePopover() {
     const [, , inputText] = result;
     setInputText(inputText);
     setIsVisible(true);
+
+    return () => {
+      isMounted = false;
+    };
   }, [editor.children, getRegexResult, hidePopover]);
 
   const onOptionClick = useCallback(
