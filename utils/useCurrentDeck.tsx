@@ -1,42 +1,41 @@
-import { useState, useEffect, useContext, createContext, useCallback } from 'react';
+import { useState, useEffect, useContext, createContext } from 'react';
 import type { ReactNode } from 'react';
-import { Deck } from 'types/supabase';
+// import { Deck } from 'types/supabase';
 
 type CurrentDeck = {
   // deck: Deck | null;
   deck: { id: string };
 };
 
+// TODO: clean up
 const CurrentDeckContext = createContext<CurrentDeck | undefined>(undefined);
 
-// function useProvideDeck(deckId: string): CurrentDeck {
-//   const [deck, setDeck] = useState<Deck | null>(null);
+function useProvideDeck(deckId: string): CurrentDeck {
+  const [deck, setDeck] = useState<any>(null);
 
-//   const initDeck = async (deckId: string) => {
-//     const res = await fetch('/api/deck', {
-//       method: 'POST',
-//       headers: {
-//         'Content-Type': 'application/json',
-//       },
-//       body: JSON.stringify({ deckId }),
-//     });
-//     const { deck } = await res.json();
+  const initDeck = async (deckId: string) => {
+    const res = await fetch('/api/deck', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ deckId }),
+    });
 
-//     setDeck(deck);
-//   };
+    setDeck({ deck: { id: deckId } });
+  };
 
-//   useEffect(() => {
-//     initDeck(deckId);
-//   }, []);
+  useEffect(() => {
+    initDeck(deckId);
+  }, []);
 
-//   return {
-//     deck,
-//   };
-// }
+  return {
+    deck,
+  };
+}
 
 export function ProvideCurrentDeck({ children, deckId }: { children: ReactNode; deckId: string }) {
-  // const deck = useProvideDeck(deckId);
-  const deck = { deck: { id: deckId } };
+  const deck = useProvideDeck(deckId);
 
   return <CurrentDeckContext.Provider value={deck}>{children}</CurrentDeckContext.Provider>;
 }

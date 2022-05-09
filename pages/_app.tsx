@@ -47,7 +47,7 @@ export default function MyApp({ Component, pageProps, router }: AppProps) {
       </Head>
       <ServiceWorker>
         <Provider autoConnect connectors={connectors} provider={provider}>
-          <GunProvider sessionUser={pageProps.user}>
+          <GunProvider>
             <ProvideAuth>
               {router.pathname.startsWith('/app/') ? (
                 <AppLayout>

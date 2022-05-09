@@ -1,13 +1,10 @@
 import { useState, useEffect, useCallback } from 'react';
 import { v4 as uuidv4 } from 'uuid';
-import type { PickPartial } from 'types/utils';
-import type { Note, Deck } from 'types/gun';
+import type { Deck } from 'types/gun';
 import { encryptWithLit, decryptWithLit, encrypt, decrypt } from 'utils/encryption';
 import createOnboardingNotes from 'utils/createOnboardingNotes';
 import { useAuth } from 'utils/useAuth';
 import useGun from 'utils/useGun';
-
-export type NoteUpdate = PickPartial<Note, 'content' | 'title' | 'created_at' | 'updated_at'>;
 
 export default function useDeck() {
   const { getUser, authenticate, createUser } = useGun();
@@ -113,6 +110,8 @@ export default function useDeck() {
       accessControlConditions: JSON.stringify(accessControlConditions),
     };
     const encryptedDeck = await encrypt(deck, { pair: appKeypair });
+    // TODO: alt?
+    // await getUser()?.get('decks').get(user.id).get(deckId).put(encryptedDeck).then();
     await getUser()?.get('decks').get(deckId).put(encryptedDeck).then();
 
     await authenticate(deckKeypair);

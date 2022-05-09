@@ -1,10 +1,6 @@
 import { withIronSessionApiRoute } from 'iron-session/next';
 import { NextApiRequest, NextApiResponse } from 'next';
-import crypto from 'crypto';
-import SEA from 'gun/sea';
 import { ironOptions } from 'constants/iron-session';
-import { User } from 'types/supabase';
-import supabase from 'lib/supabase';
 
 const handler = async (req: NextApiRequest, res: NextApiResponse) => {
   const { method } = req;

@@ -10,7 +10,7 @@ import useGun from 'utils/useGun';
 export type NoteUpdate = PickPartial<Note, 'content' | 'title' | 'created_at' | 'updated_at'>;
 
 export default function useNotes() {
-  const { getUser, reauthenticateDeck } = useGun();
+  const { getUser, reauthenticateDeck, isAuthenticated } = useGun();
   const [notesReady, setNotesReady] = useState<boolean>(false);
   const router = useRouter();
   const {
@@ -23,6 +23,8 @@ export default function useNotes() {
 
   useEffect(() => {
     const initData = async () => {
+      await checkReauthenticate();
+
       getUser()
         ?.get('notes')
         .map()
@@ -60,6 +62,7 @@ export default function useNotes() {
           { change: true },
         );
     };
+
     initData();
     // TODO: better way to handle this
     setTimeout(() => setNotesReady(true), 300);
@@ -67,7 +70,7 @@ export default function useNotes() {
     return () => {
       getUser()?.get('notes').off();
     };
-  }, [getUser, upsertStoreNote, updateStoreNote, deleteStoreNote, deckId, setNotesReady]);
+  }, [getUser, deckId, setNotesReady, isAuthenticated]);
 
   // we may need to reauthenticate if session was loaded from the server
   const checkReauthenticate = async () => {
@@ -86,19 +89,19 @@ export default function useNotes() {
   const getNotes = useCallback(async () => {
     await checkReauthenticate();
 
-    const notes: Note[] = [];
-    // @ts-ignore
-    const pair = getUser()?._.sea;
-    await getUser()
+    const notes: any = {};
+    getUser()
       ?.get('notes')
       .map()
-      .once(async note => {
-        if (note) {
+      .once(async (note: any, id: string) => {
+        // @ts-ignore
+        const pair = getUser()?._.sea;
+        if (!pair) return;
+        if (id && note) {
           const decryptedNote = await decrypt(note, { pair });
-          notes.push(decryptedNote);
+          notes[decryptedNote.id] = decryptedNote;
         }
-      })
-      .then();
+      });
 
     return notes;
   }, [checkReauthenticate, getUser]);
@@ -119,9 +122,8 @@ export default function useNotes() {
       const encryptedNote = await encrypt(note, { pair });
       await getUser()?.get('notes').get(note.id).put(encryptedNote).then();
 
-      // TODO: let Gun .on listener handle this alone?
       // Refresh the list of notes in the sidebar
-      // store.getState().upsertNote({ ...note, content: JSON.parse(note.content) });
+      store.getState().upsertNote({ ...note, content: JSON.parse(note.content) });
 
       await getUser()?.get('note_tree').put(JSON.stringify(store.getState().noteTree)).then();
 
@@ -143,9 +145,8 @@ export default function useNotes() {
         const encryptedNote = await encrypt(note, { pair });
         await getUser()?.get('notes').get(note.id).put(encryptedNote).then();
 
-        // TODO: let Gun .on listener handle this alone?
         // Update updated_at locally
-        // store.getState().updateNote({ id: note.id, updated_at: note.updated_at });
+        store.getState().updateNote({ id: note.id, updated_at: note.updated_at });
       } catch (error) {
         console.error(error);
       }
@@ -158,7 +159,7 @@ export default function useNotes() {
       await checkReauthenticate();
 
       // Update note titles in sidebar
-      // store.getState().deleteNote(noteId);
+      store.getState().deleteNote(noteId);
 
       await getUser()?.get('notes').get(noteId).put(null).then();
 

@@ -6,7 +6,6 @@ import { useRouter } from 'next/router';
 import { useAccount } from 'wagmi';
 import { toast } from 'react-toastify';
 import { ironOptions } from 'constants/iron-session';
-import supabase from 'lib/supabase';
 import { Deck } from 'types/gun';
 import useIsMounted from 'utils/useIsMounted';
 import { useAuth } from 'utils/useAuth';
@@ -18,7 +17,6 @@ import HomeHeader from 'components/home/HomeHeader';
 import RequestDeckAccess from 'components/home/RequestDeckAccess';
 import ProvideDeckName from 'components/home/ProvideDeckName';
 import Button from 'components/home/Button';
-import PageLoading from 'components/PageLoading';
 
 export default function AppHome() {
   const router = useRouter();
@@ -28,7 +26,6 @@ export default function AppHome() {
   const { decks, decksReady, insertDeck } = useDeck();
   const [requestingAccess, setRequestingAccess] = useState<boolean>(false);
   const [creatingDeck, setCreatingDeck] = useState<boolean>(false);
-  const [lookingForDeck, setLookingForDeck] = useState<boolean>(true);
   const isMounted = useIsMounted();
 
   useEffect(() => {
@@ -51,33 +48,6 @@ export default function AppHome() {
       accountData?.connector?.off('disconnect', onDisconnect);
     };
   }, [accountData?.connector, signOut]);
-
-  useEffect(() => {
-    // console.log(sessionStorage.getItem('pair'));
-    router.events.on('routeChangeStart', () => setLookingForDeck(true));
-    const lookForUserDeck = async () => {
-      if (!process.env.NEXT_PUBLIC_APP_ACCESS_KEY_PAIR || !user?.id) return;
-      const deckObjs: Deck[] = Object.values(decks);
-      if (decksReady && deckObjs.length && deckObjs.find(deck => deck.user === user.id)) {
-        const deckId = deckObjs.find(deck => deck.user === user.id)?.id ?? '';
-        const encryptedDeck = await getUser()?.get('decks').get(deckId).then();
-        const decryptedDeck = await decrypt(encryptedDeck, { pair: JSON.parse(process.env.NEXT_PUBLIC_APP_ACCESS_KEY_PAIR) });
-
-        const { encryptedString, encryptedSymmetricKey, accessControlConditions } = decryptedDeck;
-        const decryptedDeckKeypair = await decryptWithLit(encryptedString, encryptedSymmetricKey, accessControlConditions);
-
-        await authenticate(JSON.parse(decryptedDeckKeypair));
-
-        router.replace(`/app/${deckId}`);
-      }
-
-      setLookingForDeck(false);
-    };
-
-    if (decksReady) {
-      lookForUserDeck();
-    }
-  }, [user, decks, decksReady]);
 
   const createNewDeck = async (deckName: string) => {
     const deckId = await insertDeck(deckName);
@@ -142,10 +112,6 @@ export default function AppHome() {
   //   }
   // };
 
-  if (lookingForDeck || !decksReady) {
-    return <PageLoading />;
-  }
-
   return (
     <div id="app-container" className="h-screen font-display">
       <div className="flex flex-col w-full h-full bg-gray-900 text-gray-100">
@@ -180,39 +146,25 @@ export default function AppHome() {
               <Button
                 onClick={async () => {
                   if (!process.env.NEXT_PUBLIC_APP_ACCESS_KEY_PAIR) return;
-                  await authenticate(JSON.parse(process.env.NEXT_PUBLIC_APP_ACCESS_KEY_PAIR));
-                  console.log('logged in as: ', getUser()?.is?.pub);
+                  const appPair = JSON.parse(process.env.NEXT_PUBLIC_APP_ACCESS_KEY_PAIR);
+                  await authenticate(appPair);
+                  const deckId = '034b2c4b-0d7e-41fe-9d34-f6edd53951e5';
 
-                  getUser()
-                    ?.get('decks')
-                    .map()
-                    .once((deck, deckId) => console.log(deckId, deck));
-                  // .then();
-                  // console.log(decks);
-                  // const deckId = '1ef1fc3b-563b-49e5-86c5-f3619989cf68';
-                  // const deckToAccess = await getUser()?.get(`deck/${deckId}`).then();
+                  const deck = await getUser()?.get('decks').get(deckId).then();
+                  const decryptedDeck = await decrypt(deck, { pair: appPair });
 
-                  // const { encryptedString, encryptedSymmetricKey, accessControlConditions } = deckToAccess;
-                  // const decryptedDeckKeypair = await decryptWithLit(
-                  //   encryptedString,
-                  //   encryptedSymmetricKey,
-                  //   JSON.parse(accessControlConditions),
-                  // );
+                  const { encryptedString, encryptedSymmetricKey, accessControlConditions } = decryptedDeck;
+                  const decryptedDeckKeypair = await decryptWithLit(
+                    encryptedString,
+                    encryptedSymmetricKey,
+                    accessControlConditions,
+                  );
 
-                  // await authenticate(JSON.parse(decryptedDeckKeypair));
-                  // console.log('logged in as: ', getUser()?.is?.pub);
-
-                  // router.push(`/app/${deckId}`);
+                  await authenticate(JSON.parse(decryptedDeckKeypair));
+                  router.push(`/app/${deckId}`);
                 }}
               >
                 Test Gun
-              </Button>
-              <Button
-                onClick={async () => {
-                  console.log(decks);
-                }}
-              >
-                Test Decks storage
               </Button>
             </div>
           </div>
@@ -223,13 +175,11 @@ export default function AppHome() {
 }
 
 export const getServerSideProps = withIronSessionSsr(async function ({ req }) {
-  const { user } = req.session;
-  // const decks = await selectDecks(user?.id);
+  const { user, gun, deck } = req.session;
 
-  // if (decks.length) {
-  //   return { redirect: { destination: `/app/${decks[decks.length - 1].id}`, permanent: false } };
-  // } else {
-  //   return user ? { props: {} } : { redirect: { destination: '/', permanent: false } };
-  // }
-  return user ? { props: {} } : { redirect: { destination: '/', permanent: false } };
+  if (gun && deck) {
+    return { redirect: { destination: `/app/${deck}`, permanent: false } };
+  } else {
+    return user ? { props: {} } : { redirect: { destination: '/', permanent: false } };
+  }
 }, ironOptions);

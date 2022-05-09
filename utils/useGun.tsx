@@ -7,12 +7,7 @@ import 'gun/lib/radisk';
 import 'gun/lib/rindexed';
 import 'gun/lib/store';
 import 'gun/lib/then';
-import { decryptWithLit } from 'utils/encryption';
-
-interface GunUser {
-  id: string;
-  pub: string;
-}
+import { decryptWithLit, decrypt } from 'utils/encryption';
 
 if (!process.env.NEXT_PUBLIC_GUN_PEERS) {
   throw new Error('NEXT_PUBLIC_GUN_PEERS in env environment required');
@@ -22,7 +17,6 @@ const NEXT_PUBLIC_GUN_PEERS = process.env.NEXT_PUBLIC_GUN_PEERS.split(',');
 
 interface Props {
   children: React.ReactNode;
-  sessionUser?: GunUser;
 }
 
 interface ContextValue {
@@ -52,7 +46,7 @@ const GunContext = createContext<ContextValue>({
   isAuthenticated: false,
 });
 
-export const GunProvider = ({ children, sessionUser }: Props) => {
+export const GunProvider = ({ children }: Props) => {
   const gunRef = useRef<any>();
   const userRef = useRef<any>();
   const accessTokenRef = useRef<string>();
@@ -82,7 +76,6 @@ export const GunProvider = ({ children, sessionUser }: Props) => {
           });
         });
 
-        // TODO: Radix sometimes undefined breaks this
         gunRef.current = Gun({
           peers: NEXT_PUBLIC_GUN_PEERS,
           // use indexdb instead by including radisk dependencies
@@ -92,7 +85,14 @@ export const GunProvider = ({ children, sessionUser }: Props) => {
         });
 
         // create user
-        userRef.current = gunRef.current.user().recall({ sessionStorage: true });
+        const res = await fetch('/api/gun');
+        const { gun } = await res.json();
+
+        if (gun) {
+          userRef.current = gunRef.current.user().auth(gun);
+        } else {
+          userRef.current = gunRef.current.user();
+        }
 
         setIsReady(true);
       }
@@ -147,9 +147,23 @@ export const GunProvider = ({ children, sessionUser }: Props) => {
     await logout();
 
     return new Promise<void>((resolve, reject) => {
-      gunRef.current.user().auth(pair, ({ err, sea }: any) => {
+      gunRef.current.user().auth(pair, async ({ err, sea }: any) => {
         if (err) {
           reject(new Error(err));
+        }
+
+        if (
+          process.env.NEXT_PUBLIC_APP_ACCESS_KEY_PAIR &&
+          JSON.parse(process.env.NEXT_PUBLIC_APP_ACCESS_KEY_PAIR).pub !== sea.pub
+        ) {
+          const response = await fetch('/api/gun', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ sea }),
+          });
+          if (!response.ok) reject();
         }
 
         setIsAuthenticated(true);
@@ -159,20 +173,20 @@ export const GunProvider = ({ children, sessionUser }: Props) => {
   };
 
   const reauthenticateDeck = async (deckId: string) => {
+    // TODO: does this ever fire?
+    console.log('reauthenticateDeck');
+    console.log(gunRef.current);
     if (!gunRef.current || !process.env.NEXT_PUBLIC_APP_ACCESS_KEY_PAIR) return;
 
     await authenticate(JSON.parse(process.env.NEXT_PUBLIC_APP_ACCESS_KEY_PAIR));
-
-    const deckToAccess = await gunRef.current.user().get(`deck/${deckId}`).then();
-    const { encryptedString, encryptedSymmetricKey, accessControlConditions } = deckToAccess;
-    const decryptedDeckKeypair = await decryptWithLit(
-      encryptedString,
-      encryptedSymmetricKey,
-      JSON.parse(accessControlConditions),
-    );
+    const encryptedDeck = await gunRef.current.user().get('decks').get(deckId).then();
+    const decryptedDeck = await decrypt(encryptedDeck, { pair: JSON.parse(process.env.NEXT_PUBLIC_APP_ACCESS_KEY_PAIR) });
+    const { encryptedString, encryptedSymmetricKey, accessControlConditions } = decryptedDeck;
+    const decryptedDeckKeypair = await decryptWithLit(encryptedString, encryptedSymmetricKey, accessControlConditions);
 
     return new Promise<void>((resolve, reject) => {
-      gunRef.current.user().auth(decryptedDeckKeypair, ({ err, sea }: any) => {
+      gunRef.current.user().auth(JSON.parse(decryptedDeckKeypair), ({ err, sea }: any) => {
+        console.log('authed as', sea.pub);
         if (err) {
           reject(new Error(err));
         }

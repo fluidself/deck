@@ -35,7 +35,7 @@ export default function AppLayout(props: Props) {
   const { user, isLoaded, signOut } = useAuth();
   const [{ data: accountData }] = useAccount();
   const { isReady, getUser } = useGun();
-  const { upsertNote: upsertDbNote, notesReady } = useNotes();
+  const { upsertNote: upsertDbNote, notesReady, getNotes } = useNotes();
   const [isPageLoaded, setIsPageLoaded] = useState(false);
   const isMounted = useIsMounted();
 

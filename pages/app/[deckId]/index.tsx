@@ -16,10 +16,11 @@ export default function DeckHome() {
 }
 
 export const getServerSideProps = withIronSessionSsr(async function ({ params, req }) {
-  const { user, allowedDeck } = req.session;
+  // TODO: cover all edge cases
+  const { user, gun, deck } = req.session;
   // const deckId = params?.deckId;
   // const authorized = await checkProtectedPageAuth(deckId, user, allowedDeck);
-  const authorized = user ? true : false;
+  const authorized = user && gun ? true : false;
 
   return authorized ? { props: {} } : { redirect: { destination: '/', permanent: false } };
 }, ironOptions);

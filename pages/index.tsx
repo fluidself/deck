@@ -5,7 +5,6 @@ import { IconInfoCircle } from '@tabler/icons';
 import { useEffect } from 'react';
 import { useAccount } from 'wagmi';
 import { ironOptions } from 'constants/iron-session';
-import selectDecks from 'lib/api/selectDecks';
 import { useAuth } from 'utils/useAuth';
 import useIsMounted from 'utils/useIsMounted';
 import { EthereumIcon } from 'components/home/EthereumIcon';
@@ -77,11 +76,10 @@ export default function Home() {
 }
 
 export const getServerSideProps = withIronSessionSsr(async function ({ req }) {
-  const { user } = req.session;
-  const decks = await selectDecks(user?.id);
+  const { user, gun, deck } = req.session;
 
-  if (decks.length) {
-    return { redirect: { destination: `/app/${decks[decks.length - 1].id}`, permanent: false } };
+  if (gun && deck) {
+    return { redirect: { destination: `/app/${deck}`, permanent: false } };
   } else {
     return user ? { redirect: { destination: '/app', permanent: false } } : { props: {} };
   }
