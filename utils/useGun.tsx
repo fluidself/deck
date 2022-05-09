@@ -173,9 +173,8 @@ export const GunProvider = ({ children }: Props) => {
   };
 
   const reauthenticateDeck = async (deckId: string) => {
-    // TODO: does this ever fire?
+    // TODO: how often does this fire?
     console.log('reauthenticateDeck');
-    console.log(gunRef.current);
     if (!gunRef.current || !process.env.NEXT_PUBLIC_APP_ACCESS_KEY_PAIR) return;
 
     await authenticate(JSON.parse(process.env.NEXT_PUBLIC_APP_ACCESS_KEY_PAIR));
@@ -186,7 +185,6 @@ export const GunProvider = ({ children }: Props) => {
 
     return new Promise<void>((resolve, reject) => {
       gunRef.current.user().auth(JSON.parse(decryptedDeckKeypair), ({ err, sea }: any) => {
-        console.log('authed as', sea.pub);
         if (err) {
           reject(new Error(err));
         }

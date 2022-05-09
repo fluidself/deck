@@ -29,6 +29,23 @@ export default function AppHome() {
   const isMounted = useIsMounted();
 
   useEffect(() => {
+    const redirect = async () => {
+      if (!process.env.NEXT_PUBLIC_APP_ACCESS_KEY_PAIR) return;
+
+      const deck: Deck = Object.values(decks)[0];
+      const { encryptedString, encryptedSymmetricKey, accessControlConditions } = deck;
+      const decryptedDeckKeypair = await decryptWithLit(encryptedString, encryptedSymmetricKey, accessControlConditions);
+
+      await authenticate(JSON.parse(decryptedDeckKeypair));
+      router.push(`/app/${deck.id}`);
+    };
+
+    if (Object.keys(decks).length > 0) {
+      redirect();
+    }
+  }, [Object.keys(decks).length]);
+
+  useEffect(() => {
     const initLit = async () => {
       const client = new LitJsSdk.LitNodeClient({ alertWhenUnauthorized: false, debug: false });
       await client.connect();
@@ -125,6 +142,26 @@ export default function AppHome() {
             </p>
 
             <div className="flex flex-col w-1/2 mx-auto mt-12 space-y-5">
+              {/* {Object.keys(decks).length > 0 && (
+                <Button
+                  onClick={async () => {
+                    if (!process.env.NEXT_PUBLIC_APP_ACCESS_KEY_PAIR) return;
+
+                    const deck: Deck = Object.values(decks)[0];
+                    const { encryptedString, encryptedSymmetricKey, accessControlConditions } = deck;
+                    const decryptedDeckKeypair = await decryptWithLit(
+                      encryptedString,
+                      encryptedSymmetricKey,
+                      accessControlConditions,
+                    );
+
+                    await authenticate(JSON.parse(decryptedDeckKeypair));
+                    router.push(`/app/${deck.id}`);
+                  }}
+                >
+                  Use a recent DECK ({Object.values(decks)[0].name})
+                </Button>
+              )} */}
               {creatingDeck ? (
                 <ProvideDeckName
                   onCancel={() => setCreatingDeck(false)}

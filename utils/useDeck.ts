@@ -9,12 +9,12 @@ import useGun from 'utils/useGun';
 export default function useDeck() {
   const { getUser, authenticate, createUser } = useGun();
   const { user } = useAuth();
-  const [decks, setDecks] = useState<any>({});
+  const [decks, setDecks] = useState<{ [key: string]: Deck }>({});
   const [decksReady, setDecksReady] = useState<boolean>(false);
 
   useEffect(() => {
     const initData = async () => {
-      if (!process.env.NEXT_PUBLIC_APP_ACCESS_KEY_PAIR) return;
+      if (!process.env.NEXT_PUBLIC_APP_ACCESS_KEY_PAIR || !user?.id) return;
       const pair = JSON.parse(process.env.NEXT_PUBLIC_APP_ACCESS_KEY_PAIR);
       await authenticate(pair);
       await getUser()
@@ -23,10 +23,12 @@ export default function useDeck() {
         .once(async deck => {
           if (deck && deck.user) {
             const decryptedDeck = await decrypt(deck, { pair });
-            setDecks((previousDecks: any) => ({
-              ...previousDecks,
-              [deck.id]: decryptedDeck,
-            }));
+            if (decryptedDeck.user === user.id) {
+              setDecks((previousDecks: any) => ({
+                ...previousDecks,
+                [deck.id]: decryptedDeck,
+              }));
+            }
           }
         })
         .then();
