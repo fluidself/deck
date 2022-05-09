@@ -84,7 +84,6 @@ export default function useNotes() {
       gunUser.pub === JSON.parse(process.env.NEXT_PUBLIC_APP_ACCESS_KEY_PAIR!).pub
     ) {
       if (deckPair.pub !== '') {
-        console.log('deckPair', deckPair);
         await authenticate(deckPair);
         return;
       } else {
@@ -122,7 +121,8 @@ export default function useNotes() {
       await checkReauthenticate();
 
       // @ts-ignore
-      const pair = getUser()?._.sea;
+      // const pair = getUser()?._.sea;
+      const pair: ISEAPair = store.getState().deckPair;
       const note = {
         id: noteId || uuidv4(),
         title: noteTitle,

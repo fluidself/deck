@@ -138,6 +138,8 @@ export default function useDeck() {
 
   // const deleteDeck = useCallback(async () => {}, []);
 
+  // TODO: should only original DECK creator be allowed to call this?
+  // if so, enforce here or filter out UI options?
   const provisionAccess = async (acc: AccessControlCondition[]) => {
     if (!deckId || typeof deckId !== 'string' || !acc || !user?.id) return;
 
@@ -179,7 +181,21 @@ export default function useDeck() {
     await authenticate(deckPair);
   };
 
-  // const verifyAccess = useCallback(async () => {}, []);
+  const verifyAccess = async (requestedDeckId: string) => {
+    const pair = JSON.parse(process.env.NEXT_PUBLIC_APP_ACCESS_KEY_PAIR!);
+    await authenticate(pair);
+
+    const deck = await getUser()?.get('decks').get(requestedDeckId).then();
+    if (!deck) {
+      throw new Error('Unable to verify access');
+    }
+
+    const decryptedDeck = await decrypt(deck, { pair });
+    const { encryptedString, encryptedSymmetricKey, accessControlConditions } = decryptedDeck;
+    const decryptedDeckKeypair = await decryptWithLit(encryptedString, encryptedSymmetricKey, accessControlConditions);
+
+    await authenticate(JSON.parse(decryptedDeckKeypair));
+  };
 
   return {
     decks,
@@ -189,6 +205,6 @@ export default function useDeck() {
     // renameDeck,
     // deleteDeck,
     provisionAccess,
-    // verifyAccess,
+    verifyAccess,
   };
 }

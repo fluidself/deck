@@ -12,7 +12,6 @@ import { useAuth } from 'utils/useAuth';
 import useGun from 'utils/useGun';
 import useDeck from 'utils/useDeck';
 import { decryptWithLit, decrypt } from 'utils/encryption';
-import { AuthSig } from 'types/lit';
 import HomeHeader from 'components/home/HomeHeader';
 import RequestDeckAccess from 'components/home/RequestDeckAccess';
 import ProvideDeckName from 'components/home/ProvideDeckName';
@@ -23,14 +22,13 @@ export default function AppHome() {
   const [{ data: accountData }] = useAccount();
   const { user, isLoaded, signOut } = useAuth();
   const { getUser, authenticate } = useGun();
-  const { decks, decksReady, insertDeck } = useDeck();
+  const { decks, decksReady, insertDeck, verifyAccess } = useDeck();
   const [requestingAccess, setRequestingAccess] = useState<boolean>(false);
   const [creatingDeck, setCreatingDeck] = useState<boolean>(false);
   const isMounted = useIsMounted();
 
   useEffect(() => {
     const redirect = async () => {
-      if (!process.env.NEXT_PUBLIC_APP_ACCESS_KEY_PAIR) return;
       const deck: Deck = Object.values(decks)[0];
       const { encryptedString, encryptedSymmetricKey, accessControlConditions } = deck;
       const decryptedDeckKeypair = await decryptWithLit(encryptedString, encryptedSymmetricKey, accessControlConditions);
@@ -77,56 +75,18 @@ export default function AppHome() {
     router.push(`/app/${deckId}`);
   };
 
-  // const verifyAccess = async (requestedDeck: string) => {
-  //   if (!requestedDeck) return;
+  const verifyDeckAccess = async (requestedDeck: string) => {
+    if (!requestedDeck) return;
 
-  //   // if (decks?.find(deck => deck.id === requestedDeck)) {
-  //   //   toast.success('You own that DECK!');
-  //   //   setRequestingAccess(false);
-  //   //   router.push(`/app/${requestedDeck}`);
-  //   //   return;
-  //   // }
-
-  //   const { data: accessParams } = await supabase.from<Deck>('decks').select('access_params').eq('id', requestedDeck).single();
-  //   if (!accessParams?.access_params) {
-  //     toast.error('Unable to verify access.');
-  //     return;
-  //   }
-
-  //   const { resource_id: resourceId, access_control_conditions: accessControlConditions } = accessParams?.access_params || {};
-  //   if (!resourceId || !accessControlConditions || !accessControlConditions[0].chain) {
-  //     toast.error('Unable to verify access.');
-  //     return;
-  //   }
-
-  //   try {
-  //     const chain = accessControlConditions[0].chain;
-  //     const authSig: AuthSig = await LitJsSdk.checkAndSignAuthMessage({ chain });
-  //     const jwt = await window.litNodeClient.getSignedToken({
-  //       accessControlConditions,
-  //       chain,
-  //       authSig,
-  //       resourceId,
-  //     });
-
-  //     const response = await fetch('/api/verify-jwt', {
-  //       method: 'POST',
-  //       headers: {
-  //         'Content-Type': 'application/json',
-  //       },
-  //       body: JSON.stringify({ jwt, requestedDeck }),
-  //     });
-
-  //     if (!response.ok) return;
-
-  //     toast.success('Access to DECK is granted.');
-  //     setRequestingAccess(false);
-  //     router.push(`/app/${requestedDeck}`);
-  //   } catch (e: any) {
-  //     console.error(e);
-  //     toast.error('Unable to verify access.');
-  //   }
-  // };
+    try {
+      await verifyAccess(requestedDeck);
+      toast.success('Access to DECK is granted');
+      setRequestingAccess(false);
+      router.push(`/app/${requestedDeck}`);
+    } catch (e: any) {
+      toast.error('Unable to verify access.');
+    }
+  };
 
   return (
     <div id="app-container" className="h-screen font-display">
@@ -173,8 +133,7 @@ export default function AppHome() {
               {requestingAccess ? (
                 <RequestDeckAccess
                   onCancel={() => setRequestingAccess(false)}
-                  // onDeckAccessRequested={async (requestedDeck: string) => await verifyAccess(requestedDeck)}
-                  onDeckAccessRequested={async (requestedDeck: string) => {}}
+                  onDeckAccessRequested={async (requestedDeck: string) => await verifyDeckAccess(requestedDeck)}
                 />
               ) : (
                 <Button onClick={() => setRequestingAccess(true)}>Join a DECK</Button>
