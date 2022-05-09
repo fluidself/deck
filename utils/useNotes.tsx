@@ -14,7 +14,6 @@ export default function useNotes() {
   const { getUser, authenticate, reauthenticateDeck, isAuthenticated } = useGun();
   const [notesReady, setNotesReady] = useState<boolean>(false);
   const router = useRouter();
-  // const [deckPair, setDeckPair] = useState<ISEAPair | null>(null);
   const {
     query: { deckId },
   } = router;
@@ -96,18 +95,6 @@ export default function useNotes() {
         }
       }
     }
-    // if (
-    //   !gunUser ||
-    //   typeof gunUser === 'undefined' ||
-    //   gunUser.pub === JSON.parse(process.env.NEXT_PUBLIC_APP_ACCESS_KEY_PAIR!).pub
-    // ) {
-    //   try {
-    //     const pair = await reauthenticateDeck(deckId);
-    //     setDeckPair(pair);
-    //   } catch (err) {
-    //     console.error(err);
-    //   }
-    // }
   };
 
   const getNotes = useCallback(async () => {

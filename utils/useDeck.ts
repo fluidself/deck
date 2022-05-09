@@ -1,12 +1,20 @@
 import { useState, useEffect, useCallback } from 'react';
+import { useRouter } from 'next/router';
 import { v4 as uuidv4 } from 'uuid';
+import type { ISEAPair } from 'gun/types/sea';
 import type { Deck } from 'types/gun';
+import { AccessControlCondition, BooleanCondition } from 'types/lit';
 import { encryptWithLit, decryptWithLit, encrypt, decrypt } from 'utils/encryption';
 import createOnboardingNotes from 'utils/createOnboardingNotes';
 import { useAuth } from 'utils/useAuth';
 import useGun from 'utils/useGun';
+import { store } from 'lib/store';
 
 export default function useDeck() {
+  const router = useRouter();
+  const {
+    query: { deckId },
+  } = router;
   const { getUser, authenticate, createUser } = useGun();
   const { user } = useAuth();
   const [decks, setDecks] = useState<{ [key: string]: Deck }>({});
@@ -130,7 +138,46 @@ export default function useDeck() {
 
   // const deleteDeck = useCallback(async () => {}, []);
 
-  // const provisionAccess = useCallback(async () => {}, []);
+  const provisionAccess = async (acc: AccessControlCondition[]) => {
+    if (!deckId || typeof deckId !== 'string' || !acc || !user?.id) return;
+
+    const deckPair: ISEAPair = store.getState().deckPair;
+    const accessControlConditions: (AccessControlCondition | BooleanCondition)[] = [
+      {
+        contractAddress: '',
+        standardContractType: '',
+        chain: 'ethereum',
+        method: '',
+        parameters: [':userAddress'],
+        returnValueTest: {
+          comparator: '=',
+          value: user.id,
+        },
+      },
+      { operator: 'or' },
+      ...acc,
+    ];
+    const [encryptedStringBase64, encryptedSymmetricKeyBase64] = await encryptWithLit(
+      JSON.stringify(deckPair),
+      accessControlConditions,
+    );
+
+    const appKeypair = JSON.parse(process.env.NEXT_PUBLIC_APP_ACCESS_KEY_PAIR!);
+    await authenticate(appKeypair);
+
+    const updates = {
+      encryptedString: encryptedStringBase64,
+      encryptedSymmetricKey: encryptedSymmetricKeyBase64,
+      accessControlConditions: JSON.stringify(accessControlConditions),
+    };
+    const encUpdates = await encrypt(updates, { pair: appKeypair });
+
+    await getUser()?.get('decks').get(deckId).get('encryptedString').put(encUpdates.encryptedString).then();
+    await getUser()?.get('decks').get(deckId).get('encryptedSymmetricKey').put(encUpdates.encryptedSymmetricKey).then();
+    await getUser()?.get('decks').get(deckId).get('accessControlConditions').put(encUpdates.accessControlConditions).then();
+
+    await authenticate(deckPair);
+  };
 
   // const verifyAccess = useCallback(async () => {}, []);
 
@@ -141,7 +188,7 @@ export default function useDeck() {
     insertDeck,
     // renameDeck,
     // deleteDeck,
-    // provisionAccess,
+    provisionAccess,
     // verifyAccess,
   };
 }

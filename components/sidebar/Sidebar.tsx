@@ -11,12 +11,11 @@ import Tooltip from 'components/Tooltip';
 import { isMobile } from 'utils/device';
 import useIsMounted from 'utils/useIsMounted';
 import { useAuth } from 'utils/useAuth';
+import useDeck from 'utils/useDeck';
 import { useCurrentDeck } from 'utils/useCurrentDeck';
 import { useStore } from 'lib/store';
-import supabase from 'lib/supabase';
 import { SPRING_CONFIG } from 'constants/spring';
-import { AccessControlCondition, AuthSig, ResourceId } from 'types/lit';
-import { Deck, AccessParams } from 'types/supabase';
+import { AccessControlCondition, BooleanCondition } from 'types/lit';
 import { ShareModal } from 'components/ShareModal';
 import CreateJoinRenameDeckModal from 'components/CreateJoinRenameDeckModal';
 import SidebarItem from './SidebarItem';
@@ -33,6 +32,7 @@ function Sidebar(props: Props) {
 
   const { user } = useAuth();
   const { deck } = useCurrentDeck();
+  const { decks, provisionAccess } = useDeck();
   const isSidebarOpen = useStore(state => state.isSidebarOpen);
   const setIsSidebarOpen = useStore(state => state.setIsSidebarOpen);
   const hideSidebarOnMobile = useCallback(() => {
@@ -43,7 +43,15 @@ function Sidebar(props: Props) {
   const [isShareModalOpen, setIsShareModalOpen] = useState<boolean>(false);
   const [processingAccess, setProcessingAccess] = useState<boolean>(false);
   const [createJoinRenameModal, setCreateJoinRenameModal] = useState<any>({ open: false, type: '' });
+  const [deckName, setDeckName] = useState<string>('');
   const isMounted = useIsMounted();
+
+  useEffect(() => {
+    const matchingDeck = Object.values(decks).find(deckOption => deckOption.id === deck?.id);
+    if (matchingDeck) {
+      setDeckName(matchingDeck.name);
+    }
+  }, [decks]);
 
   useEffect(() => {
     const initLit = async () => {
@@ -57,37 +65,9 @@ function Sidebar(props: Props) {
     }
   }, [isMounted, user]);
 
-  const provisionAccess = async (accessControlConditions: AccessControlCondition[]) => {
-    if (!deck || !accessControlConditions) return;
-
+  const provisionDeckAccess = async (acc: AccessControlCondition[]) => {
     try {
-      const chain = accessControlConditions[0].chain;
-      const authSig: AuthSig = await LitJsSdk.checkAndSignAuthMessage({ chain });
-
-      if (!authSig) {
-        toast.error('Provisioning access failed.');
-        return false;
-      }
-
-      const resourceId: ResourceId = {
-        baseUrl: process.env.BASE_URL ?? '',
-        path: `/app/${deck?.id}`,
-        orgId: '',
-        role: '',
-        extraData: '',
-      };
-
-      await window.litNodeClient.saveSigningCondition({
-        accessControlConditions,
-        chain,
-        authSig,
-        resourceId,
-        permanent: false,
-      });
-
-      const accessParamsToSave: AccessParams = { resource_id: resourceId, access_control_conditions: accessControlConditions };
-      await supabase.from<Deck>('decks').update({ access_params: accessParamsToSave }).eq('id', deck.id);
-
+      await provisionAccess(acc);
       toast.success('Access to your DECK was configured');
       return true;
     } catch (e: any) {
@@ -177,10 +157,11 @@ function Sidebar(props: Props) {
             <ShareModal
               onClose={() => setIsShareModalOpen(false)}
               deckToShare={deck?.id}
+              deckName={deckName}
               processingAccess={processingAccess}
               onAccessControlConditionsSelected={async (acc: AccessControlCondition[]) => {
-                setProcessingAccess(true);
-                const success = await provisionAccess(acc);
+                setProcessingAccess(false);
+                const success = await provisionDeckAccess(acc);
                 if (success) return true;
                 setProcessingAccess(false);
               }}

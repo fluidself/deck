@@ -16,7 +16,14 @@ const ModalComponents = {
 };
 
 const ShareModal = props => {
-  const { onClose = () => false, showStep, deckToShare = '', processingAccess, onAccessControlConditionsSelected } = props;
+  const {
+    onClose = () => false,
+    showStep,
+    deckToShare = '',
+    deckName = '',
+    processingAccess,
+    onAccessControlConditionsSelected,
+  } = props;
 
   const [activeStep, setActiveStep] = useState(showStep || 'ableToAccess');
   const [tokenList, setTokenList] = useState([]);
@@ -48,6 +55,7 @@ const ShareModal = props => {
       <Component
         {...props}
         deckToShare={deckToShare}
+        deckName={deckName}
         processingAccess={processingAccess}
         onAccessControlConditionsSelected={onAccessControlConditionsSelected}
         tokenList={tokenList}
