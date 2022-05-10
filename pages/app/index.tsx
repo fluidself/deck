@@ -22,25 +22,25 @@ export default function AppHome() {
   const [{ data: accountData }] = useAccount();
   const { user, isLoaded, signOut } = useAuth();
   const { getUser, authenticate } = useGun();
-  const { decks, decksReady, insertDeck, verifyAccess } = useDeck();
+  const { decks, decksReady, createDeck, verifyAccess } = useDeck();
   const [requestingAccess, setRequestingAccess] = useState<boolean>(false);
   const [creatingDeck, setCreatingDeck] = useState<boolean>(false);
   const isMounted = useIsMounted();
 
-  useEffect(() => {
-    const redirect = async () => {
-      const deck: Deck = Object.values(decks)[0];
-      const { encryptedString, encryptedSymmetricKey, accessControlConditions } = deck;
-      const decryptedDeckKeypair = await decryptWithLit(encryptedString, encryptedSymmetricKey, accessControlConditions);
+  // useEffect(() => {
+  //   const redirect = async () => {
+  //     const deck: Deck = Object.values(decks)[0];
+  //     const { encryptedString, encryptedSymmetricKey, accessControlConditions } = deck;
+  //     const decryptedDeckKeypair = await decryptWithLit(encryptedString, encryptedSymmetricKey, accessControlConditions);
 
-      await authenticate(JSON.parse(decryptedDeckKeypair));
-      router.push(`/app/${deck.id}`);
-    };
+  //     await authenticate(JSON.parse(decryptedDeckKeypair));
+  //     router.push(`/app/${deck.id}`);
+  //   };
 
-    if (Object.keys(decks).length > 0) {
-      redirect();
-    }
-  }, [Object.keys(decks).length]);
+  //   if (Object.keys(decks).length > 0) {
+  //     redirect();
+  //   }
+  // }, [Object.keys(decks).length]);
 
   useEffect(() => {
     const initLit = async () => {
@@ -64,15 +64,16 @@ export default function AppHome() {
   }, [accountData?.connector, signOut]);
 
   const createNewDeck = async (deckName: string) => {
-    const deckId = await insertDeck(deckName);
+    console.log(user);
+    const deckId = await createDeck(deckName);
     if (!deckId) {
       toast.error('There was an error creating the DECK');
       return;
     }
 
-    toast.success(`Successfully created ${deckName}`);
-    setCreatingDeck(false);
-    router.push(`/app/${deckId}`);
+    // toast.success(`Successfully created ${deckName}`);
+    // setCreatingDeck(false);
+    // router.push(`/app/${deckId}`);
   };
 
   const verifyDeckAccess = async (requestedDeck: string) => {

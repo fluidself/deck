@@ -1,18 +1,22 @@
 // @ts-ignore
 import LitJsSdk from 'lit-js-sdk';
 import { withIronSessionSsr } from 'iron-session/next';
+import { useRouter } from 'next/router';
 import { IconInfoCircle } from '@tabler/icons';
 import { useEffect } from 'react';
 import { useAccount } from 'wagmi';
 import { ironOptions } from 'constants/iron-session';
 import { useAuth } from 'utils/useAuth';
+import useGun from 'utils/useGun';
 import useIsMounted from 'utils/useIsMounted';
 import { EthereumIcon } from 'components/home/EthereumIcon';
 import Button from 'components/home/Button';
 
 export default function Home() {
+  const router = useRouter();
   const [{ data: accountData }] = useAccount();
   const { signIn, signOut } = useAuth();
+  const { initGunUser } = useGun();
   const isMounted = useIsMounted();
 
   useEffect(() => {
@@ -66,7 +70,15 @@ export default function Home() {
           </h1>
         </div>
 
-        <Button className="py-4 w-80 mx-auto" onClick={signIn} primary>
+        <Button
+          className="py-4 w-80 mx-auto"
+          primary
+          onClick={async () => {
+            const address = await signIn();
+            await initGunUser(address);
+            router.push('/app');
+          }}
+        >
           <EthereumIcon />
           Sign-in with Ethereum
         </Button>

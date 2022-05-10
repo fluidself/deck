@@ -9,7 +9,8 @@ import useGun from 'utils/useGun';
 type AuthContextType = {
   isLoaded: boolean;
   user: User | null;
-  signIn: () => Promise<void>;
+  // signIn: () => Promise<void>;
+  signIn: () => Promise<any>;
   signOut: () => Promise<void>;
 };
 
@@ -79,7 +80,7 @@ function useProvideAuth(): AuthContextType {
       await initUser();
 
       setSigningIn(false);
-      router.push('/app');
+      return address;
     } catch (e) {
       console.error(e);
     }

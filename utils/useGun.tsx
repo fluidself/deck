@@ -7,7 +7,7 @@ import 'gun/lib/radisk';
 import 'gun/lib/rindexed';
 import 'gun/lib/store';
 import 'gun/lib/then';
-import { decryptWithLit, decrypt } from 'utils/encryption';
+import { encrypt, encryptWithLit, decryptWithLit, decrypt } from 'utils/encryption';
 
 if (!process.env.NEXT_PUBLIC_GUN_PEERS) {
   throw new Error('NEXT_PUBLIC_GUN_PEERS in env environment required');
@@ -27,7 +27,8 @@ interface ContextValue {
   authenticate: (pair: ISEAPair) => Promise<any>;
   reauthenticateDeck: (deckId: string) => Promise<any>;
   logout: () => void;
-  createUser: () => Promise<any>;
+  initGunUser: (address: string) => Promise<void>;
+  createUser: () => Promise<ISEAPair>;
   isReady: boolean;
   isAuthenticated: boolean;
 }
@@ -41,7 +42,8 @@ const GunContext = createContext<ContextValue>({
   authenticate: () => Promise.resolve(),
   reauthenticateDeck: (deckId: string) => Promise.resolve(null),
   logout: () => {},
-  createUser: () => Promise.resolve(),
+  initGunUser: () => Promise.resolve(),
+  createUser: () => Promise.resolve({ pub: '', priv: '', epub: '', epriv: '' }),
   isReady: false,
   isAuthenticated: false,
 });
@@ -93,6 +95,7 @@ export const GunProvider = ({ children }: Props) => {
         } else {
           userRef.current = gunRef.current.user();
         }
+        // userRef.current = gunRef.current.user();
 
         setIsReady(true);
       }
@@ -133,7 +136,55 @@ export const GunProvider = ({ children }: Props) => {
   //   };
   // }, [sessionUser]);
 
-  const createUser = async () => {
+  const initGunUser = async (address: string) => {
+    const appPair = JSON.parse(process.env.NEXT_PUBLIC_APP_ACCESS_KEY_PAIR!);
+    const hashedAddr = await SEA.work(address, appPair, null, { name: 'SHA-256' });
+    const storedPair = await gunRef.current.get(`~${appPair.pub}`).get('users').get(hashedAddr).get('pair').then();
+    let userPair: ISEAPair;
+
+    if (typeof storedPair === 'undefined') {
+      console.log('no stored pair');
+      userPair = await createUser();
+      const accessControlConditions = [
+        {
+          contractAddress: '',
+          standardContractType: '',
+          chain: 'ethereum',
+          method: '',
+          parameters: [':userAddress'],
+          returnValueTest: {
+            comparator: '=',
+            value: address,
+          },
+        },
+      ];
+      const [encryptedStringBase64, encryptedSymmetricKeyBase64] = await encryptWithLit(
+        JSON.stringify(userPair),
+        accessControlConditions,
+      );
+      const toStore = await encrypt(
+        {
+          encryptedString: encryptedStringBase64,
+          encryptedSymmetricKey: encryptedSymmetricKeyBase64,
+          accessControlConditions: JSON.stringify(accessControlConditions),
+        },
+        { pair: appPair },
+      );
+
+      await authenticate(appPair);
+      await gunRef.current.user()?.get('users').get(hashedAddr!).get('pair').put(toStore).then();
+    } else {
+      console.log('found stored pair');
+      const { encryptedString, encryptedSymmetricKey, accessControlConditions } = await decrypt(storedPair, {
+        pair: appPair,
+      });
+      userPair = JSON.parse(await decryptWithLit(encryptedString, encryptedSymmetricKey, accessControlConditions));
+    }
+
+    await authenticate(userPair);
+  };
+
+  const createUser = async (): Promise<ISEAPair> => {
     return new Promise(async resolve => {
       const keyPair: ISEAPair = await SEA.pair();
 
@@ -152,10 +203,7 @@ export const GunProvider = ({ children }: Props) => {
           reject(new Error(err));
         }
 
-        if (
-          process.env.NEXT_PUBLIC_APP_ACCESS_KEY_PAIR &&
-          JSON.parse(process.env.NEXT_PUBLIC_APP_ACCESS_KEY_PAIR).pub !== sea.pub
-        ) {
+        if (sea.pub !== process.env.NEXT_PUBLIC_GUN_APP_PUBLIC_KEY) {
           const response = await fetch('/api/gun', {
             method: 'POST',
             headers: {
@@ -212,6 +260,7 @@ export const GunProvider = ({ children }: Props) => {
         },
         isReady,
         isAuthenticated,
+        initGunUser,
         createUser,
         authenticate,
         reauthenticateDeck,

@@ -11,7 +11,7 @@ import useGun from 'utils/useGun';
 export type NoteUpdate = PickPartial<Note, 'content' | 'title' | 'created_at' | 'updated_at'>;
 
 export default function useNotes() {
-  const { getUser, authenticate, reauthenticateDeck, isAuthenticated } = useGun();
+  const { getGun, isReady, getUser, authenticate, reauthenticateDeck, isAuthenticated } = useGun();
   const [notesReady, setNotesReady] = useState<boolean>(false);
   const router = useRouter();
   const {

@@ -17,7 +17,7 @@ const handler = async (req: NextApiRequest, res: NextApiResponse) => {
   }
 
   const address = req.session.siwe?.address;
-  if (!address || !process.env.APP_ACCESS_KEY_PAIR) {
+  if (!address) {
     res.status(200).json({ user: null });
     return;
   }

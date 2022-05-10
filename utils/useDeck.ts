@@ -15,20 +15,22 @@ export default function useDeck() {
   const {
     query: { deckId },
   } = router;
-  const { getUser, authenticate, createUser } = useGun();
+  const { getGun, getUser, authenticate, createUser } = useGun();
   const { user } = useAuth();
   const [decks, setDecks] = useState<{ [key: string]: Deck }>({});
   const [decksReady, setDecksReady] = useState<boolean>(false);
 
   useEffect(() => {
     const initData = async () => {
-      if (!process.env.NEXT_PUBLIC_APP_ACCESS_KEY_PAIR || !user?.id) return;
-      const pair = JSON.parse(process.env.NEXT_PUBLIC_APP_ACCESS_KEY_PAIR);
-      await authenticate(pair);
-      await getUser()
+      if (!user?.id) return;
+      const pair = JSON.parse(process.env.NEXT_PUBLIC_APP_ACCESS_KEY_PAIR!);
+      // TODO: don't need to log in to fetch this data
+      // https://gun.eco/docs/SEA.certify#4-we-can-render-the-full-list-of-links-with-verified-authorship
+      await getGun()
+        .user(pair.pub)
         ?.get('decks')
         .map()
-        .once(async deck => {
+        .once(async (deck: any) => {
           if (deck && deck.user) {
             const decryptedDeck = await decrypt(deck, { pair });
             if (decryptedDeck.user === user.id) {
@@ -85,7 +87,7 @@ export default function useDeck() {
   //   return decks;
   // }, [checkReauthenticate, getUser]);
 
-  const insertDeck = async (deckName: string) => {
+  const createDeck = async (deckName: string) => {
     if (!process.env.NEXT_PUBLIC_APP_ACCESS_KEY_PAIR || !user?.id) return;
 
     const deckId = uuidv4();
@@ -201,7 +203,7 @@ export default function useDeck() {
     decks,
     decksReady,
     // getDecks,
-    insertDeck,
+    createDeck,
     // renameDeck,
     // deleteDeck,
     provisionAccess,

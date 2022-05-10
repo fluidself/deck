@@ -3,10 +3,10 @@ import LitJsSdk from 'lit-js-sdk';
 import { toString as uint8ArrayToString } from 'uint8arrays/to-string';
 import type { ISEAPair } from 'gun/types/sea';
 import SEA from 'gun/sea';
-import _isArrayLike from 'lodash/isArrayLike';
 import _map from 'lodash/map';
 import _omit from 'lodash/omit';
 import _zipObject from 'lodash/zipObject';
+import _isArrayLike from 'lodash/isArrayLike';
 import type { AuthSig } from 'types/lit';
 
 // SEA encryption / decryption
@@ -26,7 +26,7 @@ export type DecryptOptions = CryptOptionsBase & CryptOptions;
 
 /**
  * Encrypt a value, array or object. The encrypted data
- * retains topology and can only be decrypted by the current user.
+ * retains topology and can only be decrypted with the same key pair.
  *
  * Keys are not encrypted.
  *
@@ -41,13 +41,7 @@ export async function encrypt<T>(data: T, opts: EncryptOptions): Promise<T> {
 }
 
 /**
- * Decrypt a value, array or object. The decrypted data
- * retains topology and can only be decrypted by the current user.
- *
- * Keys are not encrypted.
- *
- * If the value or nested value is already encrypted, does not re-encrypt
- * that value.
+ * Decrypt a value, array or object.
  *
  * @param value
  * @param opts

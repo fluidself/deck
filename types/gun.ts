@@ -1,7 +1,9 @@
 import type { Descendant } from 'slate';
+import type { ISEAPair } from 'gun/types/sea';
 
 export type User = {
   id: string;
+  pair: ISEAPair;
 };
 
 export type Deck = {
