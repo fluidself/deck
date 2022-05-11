@@ -51,19 +51,6 @@ export default function useDeck() {
     initData();
   }, [user]);
 
-  // const checkReauthenticate = async () => {
-  //   if (!process.env.NEXT_PUBLIC_APP_ACCESS_KEY_PAIR) return;
-  //   const gunUser = getUser()?.is;
-
-  //   if (!gunUser) {
-  //     try {
-  //       await authenticate(JSON.parse(process.env.NEXT_PUBLIC_APP_ACCESS_KEY_PAIR));
-  //     } catch (err) {
-  //       console.error(err);
-  //     }
-  //   }
-  // };
-
   // const getDecks = useCallback(async () => {
   //   if (!process.env.NEXT_PUBLIC_APP_ACCESS_KEY_PAIR) return;
   //   const pair = JSON.parse(process.env.NEXT_PUBLIC_APP_ACCESS_KEY_PAIR);

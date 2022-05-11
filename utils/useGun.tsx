@@ -25,7 +25,6 @@ interface ContextValue {
   getAccessToken: () => string | undefined;
   setAccessToken: (token: string) => void;
   authenticate: (pair: ISEAPair) => Promise<any>;
-  reauthenticateDeck: (deckId: string) => Promise<any>;
   logout: () => void;
   initGunUser: (address: string) => Promise<void>;
   createUser: () => Promise<ISEAPair>;
@@ -40,7 +39,6 @@ const GunContext = createContext<ContextValue>({
   getAccessToken: () => undefined,
   setAccessToken: () => {},
   authenticate: () => Promise.resolve(),
-  reauthenticateDeck: (deckId: string) => Promise.resolve(null),
   logout: () => {},
   initGunUser: () => Promise.resolve(),
   createUser: () => Promise.resolve({ pub: '', priv: '', epub: '', epriv: '' }),
@@ -145,7 +143,6 @@ export const GunProvider = ({ children }: Props) => {
     let userPair: ISEAPair;
 
     if (typeof storedPair === 'undefined') {
-      console.log('no stored pair');
       userPair = await createUser();
       const accessControlConditions = [
         {
@@ -176,7 +173,6 @@ export const GunProvider = ({ children }: Props) => {
       await authenticate(appPair);
       await gunRef.current.user()?.get('users').get(hashedAddr!).get('pair').put(toStore).then();
     } else {
-      console.log('found stored pair');
       const { encryptedString, encryptedSymmetricKey, accessControlConditions } = await decrypt(storedPair, {
         pair: appPair,
       });
@@ -205,35 +201,11 @@ export const GunProvider = ({ children }: Props) => {
   };
 
   const authenticate = async (pair: ISEAPair) => {
-    // console.log(`authing:`, pair);
     if (!gunRef.current) return;
     await logout();
 
     return new Promise<void>((resolve, reject) => {
       gunRef.current.user().auth(pair, async ({ err, sea }: any) => {
-        if (err) {
-          reject(new Error(err));
-        }
-
-        setIsAuthenticated(true);
-        resolve();
-      });
-    });
-  };
-
-  const reauthenticateDeck = async (deckId: string) => {
-    // TODO: how often does this fire?
-    console.log('reauthenticateDeck');
-    if (!gunRef.current || !process.env.NEXT_PUBLIC_APP_ACCESS_KEY_PAIR) return;
-
-    await authenticate(JSON.parse(process.env.NEXT_PUBLIC_APP_ACCESS_KEY_PAIR));
-    const encryptedDeck = await gunRef.current.user().get('decks').get(deckId).then();
-    const decryptedDeck = await decrypt(encryptedDeck, { pair: JSON.parse(process.env.NEXT_PUBLIC_APP_ACCESS_KEY_PAIR) });
-    const { encryptedString, encryptedSymmetricKey, accessControlConditions } = decryptedDeck;
-    const decryptedDeckKeypair = await decryptWithLit(encryptedString, encryptedSymmetricKey, accessControlConditions);
-
-    return new Promise<void>((resolve, reject) => {
-      gunRef.current.user().auth(JSON.parse(decryptedDeckKeypair), ({ err, sea }: any) => {
         if (err) {
           reject(new Error(err));
         }
@@ -264,7 +236,6 @@ export const GunProvider = ({ children }: Props) => {
         initGunUser,
         createUser,
         authenticate,
-        reauthenticateDeck,
         logout,
       }}
     >

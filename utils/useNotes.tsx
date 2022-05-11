@@ -1,7 +1,6 @@
 import { useRouter } from 'next/router';
 import { useState, useEffect, useCallback } from 'react';
 import { v4 as uuidv4 } from 'uuid';
-import type { ISEAPair } from 'gun/types/sea';
 import { store, useStore } from 'lib/store';
 import type { PickPartial } from 'types/utils';
 import type { Note } from 'types/gun';
@@ -11,7 +10,7 @@ import useGun from 'utils/useGun';
 export type NoteUpdate = PickPartial<Note, 'content' | 'title' | 'created_at' | 'updated_at'>;
 
 export default function useNotes() {
-  const { getGun, isReady, getUser, authenticate, reauthenticateDeck, isAuthenticated } = useGun();
+  const { getGun, isReady, isAuthenticated, getUser, authenticate } = useGun();
   const [notesReady, setNotesReady] = useState<boolean>(false);
   const router = useRouter();
   const {
@@ -26,12 +25,6 @@ export default function useNotes() {
 
   useEffect(() => {
     const initData = async () => {
-      // TODO: why is this sometimes empty?
-      if (!deckPair.pub) {
-        console.log(deckPair.pub);
-        return;
-      }
-
       getGun()
         ?.user(deckPair.pub)
         .get('notes')
@@ -42,6 +35,7 @@ export default function useNotes() {
             const openNoteIds = store.getState().openNoteIds;
             if (id && note) {
               // Note is new
+              setNotesReady(true);
               if (!storeNotes.includes(id)) {
                 // console.log(`upsert note ${id}`);
                 const decryptedNote = await decrypt(note, { pair: deckPair });
@@ -68,57 +62,16 @@ export default function useNotes() {
         );
     };
 
-    initData();
-    // TODO: better way to handle this?
-    setTimeout(() => setNotesReady(true), 800);
+    if (deckPair.pub) {
+      initData();
+      // TODO: better way to handle this?
+      setTimeout(() => setNotesReady(true), 800);
+    }
 
     return () => {
       getGun()?.user(deckPair.pub).get('notes').off();
     };
-  }, [deckPair]);
-
-  const checkReauthenticate = async () => {
-    if (!deckId || typeof deckId !== 'string') return;
-    const gunUser = getUser()?.is;
-    const deckPair: ISEAPair = store.getState().deckPair;
-    // TODO: keeps resetting to app user. in useDeck?
-    if (
-      !gunUser ||
-      typeof gunUser === 'undefined' ||
-      gunUser.pub === JSON.parse(process.env.NEXT_PUBLIC_APP_ACCESS_KEY_PAIR!).pub
-    ) {
-      if (deckPair.pub !== '') {
-        await authenticate(deckPair);
-        return;
-      } else {
-        try {
-          await reauthenticateDeck(deckId);
-        } catch (err) {
-          console.error(err);
-        }
-      }
-    }
-  };
-
-  const getNotes = async () => {
-    const notes: any = {};
-
-    return new Promise<any>(resolve => {
-      getGun()
-        ?.user(deckPair.pub)
-        .get('notes')
-        .map()
-        .once(async (note: any, id: string) => {
-          if (!userPair) return;
-          if (id && note) {
-            const decryptedNote = await decrypt(note, { pair: deckPair });
-            notes[decryptedNote.id] = decryptedNote;
-          }
-        });
-
-      resolve(notes);
-    });
-  };
+  }, [deckPair, notesReady]);
 
   const upsertNote = async (noteTitle: string, noteId: string = '') =>
     new Promise<string>(async (resolve, reject) => {
@@ -184,7 +137,6 @@ export default function useNotes() {
 
   return {
     notesReady,
-    getNotes,
     upsertNote,
     updateNote,
     deleteNote,

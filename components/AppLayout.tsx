@@ -34,9 +34,8 @@ export default function AppLayout(props: Props) {
   const { user, isLoaded, signOut } = useAuth();
   const [{ data: accountData }] = useAccount();
   const { isReady, getUser, getGun } = useGun();
-  const { upsertNote: upsertDbNote, notesReady, getNotes } = useNotes();
+  const { upsertNote: upsertDbNote, notesReady } = useNotes();
   const [isPageLoaded, setIsPageLoaded] = useState(false);
-  const deckPair = useStore(state => state.deckPair);
   const isMounted = useIsMounted();
 
   useEffect(() => {
@@ -58,8 +57,26 @@ export default function AppLayout(props: Props) {
     }
   }, [isPageLoaded, isLoaded, user]);
 
+  const deckPair = useStore(state => state.deckPair);
+  const setDeckPair = useStore(state => state.setDeckPair);
   const setNoteTree = useStore(state => state.setNoteTree);
   // const setDeckId = useStore(state => state.setDeckId);
+
+  const initDeck = async () => {
+    const res = await fetch('/api/deck');
+    const { deck } = await res.json();
+
+    if (deck?.pair) {
+      setDeckPair(deck?.pair);
+    }
+  };
+
+  useEffect(() => {
+    initDeck();
+
+    window.addEventListener('focus', initDeck);
+    return () => window.removeEventListener('focus', initDeck);
+  }, []);
 
   const initLit = async () => {
     const client = new LitJsSdk.LitNodeClient({ alertWhenUnauthorized: false, debug: false });
@@ -67,7 +84,7 @@ export default function AppLayout(props: Props) {
     window.litNodeClient = client;
   };
 
-  // TODO: always runs twice on first load. figure out why
+  // TODO: consistently empty when runs
   const initData = useCallback(async () => {
     if (!window.litNodeClient && isMounted()) {
       await initLit();
@@ -103,7 +120,6 @@ export default function AppLayout(props: Props) {
     const notesAsObj = store.getState().notes;
 
     if (storedNoteTree && typeof storedNoteTree !== 'undefined') {
-      console.log(storedNoteTree);
       const noteTree: NoteTreeItem[] = [...JSON.parse(storedNoteTree)];
       // This is a sanity check for removing notes in the noteTree that do not exist
       removeNonexistentNotes(noteTree, notesAsObj);

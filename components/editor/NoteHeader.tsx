@@ -30,7 +30,6 @@ import OpenSidebarButton from 'components/sidebar/OpenSidebarButton';
 import { DropdownItem } from 'components/Dropdown';
 import useDeleteNote from 'utils/useDeleteNote';
 import useDeck from 'utils/useDeck';
-import useGun from 'utils/useGun';
 import { decryptWithLit } from 'utils/encryption';
 import NoteMetadata from 'components/NoteMetadata';
 import MoveToModal from 'components/MoveToModal';
@@ -45,7 +44,6 @@ export default function NoteHeader() {
   const { user } = useAuth();
   const { deck } = useCurrentDeck();
   const { decks } = useDeck();
-  const { authenticate } = useGun();
   const [deckOptions, setDeckOptions] = useState<any>(null);
   const [selectedDeck, setSelectedDeck] = useState<any>(null);
   const router = useRouter();
@@ -54,14 +52,16 @@ export default function NoteHeader() {
   } = router;
 
   useEffect(() => {
-    const decksToOptions = Object.values(decks)?.map(deck => ({
-      label: `${deck.name} (${deck.id})`,
-      id: deck.id,
-      value: deck.id,
-    }));
-    setDeckOptions(decksToOptions);
-    setSelectedDeck(decksToOptions?.find(deckOption => deckOption.id === deck?.id));
-  }, [decks, deck?.id]);
+    if (Object.keys(decks).length > 0) {
+      const decksToOptions = Object.values(decks)?.map(deck => ({
+        label: `${deck.name} (${deck.id})`,
+        id: deck.id,
+        value: deck.id,
+      }));
+      setDeckOptions(decksToOptions);
+      setSelectedDeck(decksToOptions?.find(deckOption => deckOption.id === deck?.id));
+    }
+  }, [Object.keys(decks).length, deck?.id]);
 
   const isSidebarButtonVisible = useStore(state => !state.isSidebarOpen && state.openNoteIds?.[0] === currentNote.id);
   const isCloseButtonVisible = useStore(state => state.openNoteIds.length > 1);
@@ -166,8 +166,16 @@ export default function NoteHeader() {
                       accessControlConditions,
                     );
 
-                    await authenticate(JSON.parse(decryptedDeckKeypair));
-                    window.location.assign(`${process.env.BASE_URL}/app/${value.id}`);
+                    const response = await fetch('/api/deck', {
+                      method: 'POST',
+                      headers: {
+                        'Content-Type': 'application/json',
+                      },
+                      body: JSON.stringify({ deckId: deck.id, pair: JSON.parse(decryptedDeckKeypair) }),
+                    });
+                    if (!response.ok) return;
+
+                    window.location.assign(`${process.env.BASE_URL}/app/${deck.id}`);
                   }}
                 />
               </div>
