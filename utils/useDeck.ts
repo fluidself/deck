@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/router';
 import { v4 as uuidv4 } from 'uuid';
+import SEA from 'gun/sea';
 import type { ISEAPair } from 'gun/types/sea';
 import type { Deck } from 'types/gun';
 import { AccessControlCondition, BooleanCondition } from 'types/lit';
@@ -23,22 +24,21 @@ export default function useDeck() {
   useEffect(() => {
     const initData = async () => {
       if (!user?.id) return;
-      const pair = JSON.parse(process.env.NEXT_PUBLIC_APP_ACCESS_KEY_PAIR!);
-      // TODO: don't need to log in to fetch this data
-      // https://gun.eco/docs/SEA.certify#4-we-can-render-the-full-list-of-links-with-verified-authorship
+      const appPair = JSON.parse(process.env.NEXT_PUBLIC_APP_ACCESS_KEY_PAIR!);
+      const hashedAddr = await SEA.work(user.id, appPair, null, { name: 'SHA-256' });
       await getGun()
-        .user(pair.pub)
-        ?.get('decks')
+        ?.user(`${process.env.NEXT_PUBLIC_GUN_APP_PUBLIC_KEY}`)
+        .get('users')
+        .get(hashedAddr)
+        .get('decks')
         .map()
         .once(async (deck: any) => {
           if (deck && deck.user) {
-            const decryptedDeck = await decrypt(deck, { pair });
-            if (decryptedDeck.user === user.id) {
-              setDecks((previousDecks: any) => ({
-                ...previousDecks,
-                [deck.id]: decryptedDeck,
-              }));
-            }
+            const decryptedDeck = await decrypt(deck, { pair: appPair });
+            setDecks((previousDecks: any) => ({
+              ...previousDecks,
+              [deck.id]: decryptedDeck,
+            }));
           }
         })
         .then();
@@ -88,10 +88,12 @@ export default function useDeck() {
   // }, [checkReauthenticate, getUser]);
 
   const createDeck = async (deckName: string) => {
-    if (!process.env.NEXT_PUBLIC_APP_ACCESS_KEY_PAIR || !user?.id) return;
-
+    if (!user?.id) return;
+    // @ts-ignore
+    const userPair = getUser()?._.sea;
+    const appPair = JSON.parse(process.env.NEXT_PUBLIC_APP_ACCESS_KEY_PAIR!);
+    const deckPair = await SEA.pair();
     const deckId = uuidv4();
-    const deckKeypair = await createUser();
     const accessControlConditions = [
       {
         contractAddress: '',
@@ -106,35 +108,69 @@ export default function useDeck() {
       },
     ];
     const [encryptedStringBase64, encryptedSymmetricKeyBase64] = await encryptWithLit(
-      JSON.stringify(deckKeypair),
+      JSON.stringify(deckPair),
       accessControlConditions,
     );
 
-    const appKeypair = JSON.parse(process.env.NEXT_PUBLIC_APP_ACCESS_KEY_PAIR);
-    await authenticate(appKeypair);
+    const certificate = await SEA.certify(userPair.pub, [{ '*': 'notes' }, { '*': 'note_tree' }], deckPair);
+    await authenticate(deckPair);
+    await getUser()?.get('certs').get(userPair.pub).put(certificate).then();
 
     const deck = {
       id: deckId,
       name: deckName,
-      user: user.id,
+      user: user.id, // needed?
+      pub: deckPair.pub, // needed?
       encryptedString: encryptedStringBase64,
       encryptedSymmetricKey: encryptedSymmetricKeyBase64,
       accessControlConditions: JSON.stringify(accessControlConditions),
     };
-    const encryptedDeck = await encrypt(deck, { pair: appKeypair });
-    // TODO: alt?
-    // await getUser()?.get('decks').get(user.id).get(deckId).put(encryptedDeck).then();
-    await getUser()?.get('decks').get(deckId).put(encryptedDeck).then();
+    const encryptedDeck = await encrypt(deck, { pair: appPair });
+    const hashedAddr = await SEA.work(user.id, appPair, null, { name: 'SHA-256' });
+    await authenticate(appPair);
 
-    await authenticate(deckKeypair);
+    await getUser()?.get('decks').get(deckId).put(encryptedDeck).then();
+    await getUser()?.get('users').get(hashedAddr!).get('decks').get(deckId).put(encryptedDeck).then();
+
+    await authenticate(userPair);
     const onboardingNotes = createOnboardingNotes();
+    const promises = [];
     for (const note of onboardingNotes) {
-      const encryptedNote = await encrypt(note, { pair: deckKeypair });
-      await getUser()?.get('notes').get(note.id).put(encryptedNote).then();
+      promises.push(addNote(deckPair, certificate, note));
     }
+    await Promise.all(promises);
+
+    const response = await fetch('/api/deck', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ deckId, pair: deckPair }),
+    });
+    if (!response.ok) throw new Error('Failed to create DECK');
 
     return deckId;
   };
+
+  const addNote = async (deckPair: ISEAPair, cert: any, note: any) =>
+    new Promise<void>(async (resolve, reject) => {
+      const encryptedNote = await encrypt(note, { pair: deckPair });
+      getGun()
+        .user(deckPair.pub)
+        .get('notes')
+        .get(note.id)
+        .put(
+          encryptedNote,
+          (ack: any) => {
+            if (ack.err) {
+              reject();
+            } else {
+              resolve();
+            }
+          },
+          { opt: { cert } },
+        );
+    });
 
   // const renameDeck = useCallback(async () => {}, []);
 

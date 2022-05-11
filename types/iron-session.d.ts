@@ -9,6 +9,9 @@ declare module 'iron-session' {
     user?: User;
     allowedDeck?: string;
     gun?: ISEAPair;
-    deck?: string;
+    deck?: {
+      id: string;
+      pair: ISEAPair;
+    };
   }
 }

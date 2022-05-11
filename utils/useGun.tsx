@@ -181,6 +181,15 @@ export const GunProvider = ({ children }: Props) => {
       userPair = JSON.parse(await decryptWithLit(encryptedString, encryptedSymmetricKey, accessControlConditions));
     }
 
+    const response = await fetch('/api/gun', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ sea: userPair }),
+    });
+    if (!response.ok) throw new Error('Failed to create DECK');
+
     await authenticate(userPair);
   };
 
@@ -194,6 +203,7 @@ export const GunProvider = ({ children }: Props) => {
   };
 
   const authenticate = async (pair: ISEAPair) => {
+    // console.log(`authing:`, pair);
     if (!gunRef.current) return;
     await logout();
 
@@ -201,17 +211,6 @@ export const GunProvider = ({ children }: Props) => {
       gunRef.current.user().auth(pair, async ({ err, sea }: any) => {
         if (err) {
           reject(new Error(err));
-        }
-
-        if (sea.pub !== process.env.NEXT_PUBLIC_GUN_APP_PUBLIC_KEY) {
-          const response = await fetch('/api/gun', {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({ sea }),
-          });
-          if (!response.ok) reject();
         }
 
         setIsAuthenticated(true);

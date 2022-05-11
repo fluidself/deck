@@ -11,36 +11,39 @@ import useIsMounted from 'utils/useIsMounted';
 import { useAuth } from 'utils/useAuth';
 import useGun from 'utils/useGun';
 import useDeck from 'utils/useDeck';
-import { decryptWithLit, decrypt } from 'utils/encryption';
+import { decryptWithLit, decrypt, encrypt } from 'utils/encryption';
 import HomeHeader from 'components/home/HomeHeader';
 import RequestDeckAccess from 'components/home/RequestDeckAccess';
 import ProvideDeckName from 'components/home/ProvideDeckName';
 import Button from 'components/home/Button';
+// import SEA from 'gun/sea';
+// import createOnboardingNotes from 'utils/createOnboardingNotes';
 
 export default function AppHome() {
   const router = useRouter();
   const [{ data: accountData }] = useAccount();
   const { user, isLoaded, signOut } = useAuth();
-  const { getUser, authenticate } = useGun();
+  const { getUser, getGun, authenticate } = useGun();
   const { decks, decksReady, createDeck, verifyAccess } = useDeck();
   const [requestingAccess, setRequestingAccess] = useState<boolean>(false);
   const [creatingDeck, setCreatingDeck] = useState<boolean>(false);
   const isMounted = useIsMounted();
 
-  // useEffect(() => {
-  //   const redirect = async () => {
-  //     const deck: Deck = Object.values(decks)[0];
-  //     const { encryptedString, encryptedSymmetricKey, accessControlConditions } = deck;
-  //     const decryptedDeckKeypair = await decryptWithLit(encryptedString, encryptedSymmetricKey, accessControlConditions);
+  useEffect(() => {
+    // const redirect = async () => {
+    //   const deck: Deck = Object.values(decks)[0];
+    //   const { encryptedString, encryptedSymmetricKey, accessControlConditions } = deck;
+    //   const decryptedDeckKeypair = await decryptWithLit(encryptedString, encryptedSymmetricKey, accessControlConditions);
 
-  //     await authenticate(JSON.parse(decryptedDeckKeypair));
-  //     router.push(`/app/${deck.id}`);
-  //   };
+    //   await authenticate(JSON.parse(decryptedDeckKeypair));
+    //   router.push(`/app/${deck.id}`);
+    // };
 
-  //   if (Object.keys(decks).length > 0) {
-  //     redirect();
-  //   }
-  // }, [Object.keys(decks).length]);
+    // if (Object.keys(decks).length > 0) {
+    //   redirect();
+    // }
+    console.log(decks);
+  }, []);
 
   useEffect(() => {
     const initLit = async () => {
@@ -64,15 +67,14 @@ export default function AppHome() {
   }, [accountData?.connector, signOut]);
 
   const createNewDeck = async (deckName: string) => {
-    console.log(user);
     const deckId = await createDeck(deckName);
     if (!deckId) {
       toast.error('There was an error creating the DECK');
       return;
     }
 
-    // toast.success(`Successfully created ${deckName}`);
-    // setCreatingDeck(false);
+    toast.success(`Successfully created ${deckName}`);
+    setCreatingDeck(false);
     // router.push(`/app/${deckId}`);
   };
 
@@ -141,23 +143,27 @@ export default function AppHome() {
               )}
               <Button
                 onClick={async () => {
-                  if (!process.env.NEXT_PUBLIC_APP_ACCESS_KEY_PAIR) return;
-                  const appPair = JSON.parse(process.env.NEXT_PUBLIC_APP_ACCESS_KEY_PAIR);
-                  await authenticate(appPair);
-                  const deckId = '034b2c4b-0d7e-41fe-9d34-f6edd53951e5';
-
-                  const deck = await getUser()?.get('decks').get(deckId).then();
-                  const decryptedDeck = await decrypt(deck, { pair: appPair });
-
+                  const deckId = '266572b7-f810-4f0a-ac43-fcc38202265b';
+                  const deck = await getGun().user(process.env.NEXT_PUBLIC_GUN_APP_PUBLIC_KEY).get('decks').get(deckId).then();
+                  const decryptedDeck = await decrypt(deck, { pair: JSON.parse(process.env.NEXT_PUBLIC_APP_ACCESS_KEY_PAIR!) });
                   const { encryptedString, encryptedSymmetricKey, accessControlConditions } = decryptedDeck;
-                  const decryptedDeckKeypair = await decryptWithLit(
-                    encryptedString,
-                    encryptedSymmetricKey,
-                    accessControlConditions,
+                  const decryptedDeckKeypair = JSON.parse(
+                    await decryptWithLit(encryptedString, encryptedSymmetricKey, accessControlConditions),
                   );
-
-                  await authenticate(JSON.parse(decryptedDeckKeypair));
-                  router.push(`/app/${deckId}`);
+                  // console.log(decryptedDeck);
+                  // console.log(JSON.parse(decryptedDeckKeypair));
+                  // const notes = await getGun()?.get(`~${decryptedDeckKeypair.pub}`).get('notes').then();
+                  // console.log(notes);
+                  getGun()
+                    ?.user(`${decryptedDeckKeypair.pub}`)
+                    .get('notes')
+                    .map()
+                    .once(async (x: any) => {
+                      const decrnote = await decrypt(x, { pair: decryptedDeckKeypair });
+                      console.log(decrnote);
+                    });
+                  // await authenticate(JSON.parse(decryptedDeckKeypair));
+                  // router.push(`/app/${deckId}`);
                 }}
               >
                 Test Gun
@@ -172,10 +178,12 @@ export default function AppHome() {
 
 export const getServerSideProps = withIronSessionSsr(async function ({ req }) {
   const { user, gun, deck } = req.session;
+  console.log(user, gun, deck);
 
-  if (gun && deck) {
-    return { redirect: { destination: `/app/${deck}`, permanent: false } };
-  } else {
-    return user ? { props: {} } : { redirect: { destination: '/', permanent: false } };
-  }
+  // if (user && gun && deck) {
+  //   return { redirect: { destination: `/app/${deck.id}`, permanent: false } };
+  // } else {
+  //   return user ? { props: {} } : { redirect: { destination: '/', permanent: false } };
+  // }
+  return user ? { props: {} } : { redirect: { destination: '/', permanent: false } };
 }, ironOptions);

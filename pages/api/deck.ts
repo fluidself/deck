@@ -10,12 +10,12 @@ const handler = async (req: NextApiRequest, res: NextApiResponse) => {
     res.status(405).end(`Method ${method} not allowed`);
   }
 
-  const { deckId } = req.body;
-  if (!deckId) {
+  const { deckId, pair } = req.body;
+  if (!deckId || !pair) {
     return res.json({ ok: false });
   }
 
-  req.session.deck = deckId;
+  req.session.deck = { id: deckId, pair };
   await req.session.save();
   res.json({ ok: true });
 };
