@@ -69,6 +69,8 @@ export type Store = {
   setSidebarSearchQuery: Setter<string>;
   deckId: string;
   setDeckId: Setter<string>;
+  userPair: ISEAPair;
+  setUserPair: Setter<ISEAPair>;
   deckPair: ISEAPair;
   setDeckPair: Setter<ISEAPair>;
 } & UserSettings;
@@ -212,6 +214,8 @@ export const store = createVanilla<Store, SetState<Store>, GetState<Store>, Stor
       setSidebarSearchQuery: setter(set, 'sidebarSearchQuery'),
       deckId: '',
       setDeckId: setter(set, 'deckId'),
+      userPair: { pub: '', priv: '', epub: '', epriv: '' },
+      setUserPair: setter(set, 'userPair'),
       deckPair: { pub: '', priv: '', epub: '', epriv: '' },
       setDeckPair: setter(set, 'deckPair'),
       ...createUserSettingsSlice(set),

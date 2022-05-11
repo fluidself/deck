@@ -47,6 +47,14 @@ export default function AppLayout(props: Props) {
     };
   }, [accountData?.connector, signOut]);
 
+  // useEffect(() => {
+  //   const dostuff = async () => {
+  //     const notes = await getNotes();
+  //     console.log(notes);
+  //   };
+  //   dostuff();
+  // });
+
   useEffect(() => {
     if (!isPageLoaded && isLoaded && user) {
       // Use user's specific store and rehydrate data

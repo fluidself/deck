@@ -6,12 +6,14 @@ import checkProtectedPageAuth from 'utils/checkProtectedPageAuth';
 import { useStore } from 'lib/store';
 import { useEffect } from 'react';
 
-export default function DeckHome({ gun }: { gun: ISEAPair }) {
+export default function DeckHome({ userPair, deckPair }: { userPair: ISEAPair; deckPair: ISEAPair }) {
   const isSidebarOpen = useStore(state => state.isSidebarOpen);
+  const setUserPair = useStore(state => state.setUserPair);
   const setDeckPair = useStore(state => state.setDeckPair);
 
   useEffect(() => {
-    setDeckPair(gun);
+    setUserPair(userPair);
+    setDeckPair(deckPair);
   }, []);
 
   return (
@@ -25,9 +27,9 @@ export default function DeckHome({ gun }: { gun: ISEAPair }) {
 export const getServerSideProps = withIronSessionSsr(async function ({ params, req }) {
   // TODO: cover all edge cases
   const { user, gun, deck } = req.session;
-  // const deckId = params?.deckId;
   // const authorized = await checkProtectedPageAuth(deckId, user, allowedDeck);
-  const authorized = user && gun ? true : false;
-
-  return authorized ? { props: { gun } } : { redirect: { destination: '/', permanent: false } };
+  const authorized = user && gun && deck?.id === params?.deckId ? true : false;
+  const deckPair = typeof deck?.pair === 'string' ? JSON.parse(deck?.pair) : deck?.pair;
+  console.log(gun, deckPair);
+  return authorized ? { props: { userPair: gun, deckPair } } : { redirect: { destination: '/', permanent: false } };
 }, ironOptions);

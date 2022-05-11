@@ -13,7 +13,7 @@ import { queryParamToArray } from 'utils/url';
 import useBlockBacklinks from 'editor/backlinks/useBlockBacklinks';
 import checkProtectedPageAuth from 'utils/checkProtectedPageAuth';
 
-export default function NotePage({ gun }: { gun: ISEAPair }) {
+export default function NotePage({ userPair, deckPair }: { userPair: ISEAPair; deckPair: ISEAPair }) {
   const router = useRouter();
   const {
     query: { id: noteId, stack: stackQuery },
@@ -21,11 +21,13 @@ export default function NotePage({ gun }: { gun: ISEAPair }) {
 
   const openNoteIds = useStore(state => state.openNoteIds);
   const setOpenNoteIds = useStore(state => state.setOpenNoteIds);
+  const setUserPair = useStore(state => state.setUserPair);
   const setDeckPair = useStore(state => state.setDeckPair);
   const prevOpenNoteIds = usePrevious(openNoteIds);
 
   useEffect(() => {
-    setDeckPair(gun);
+    setUserPair(userPair);
+    setDeckPair(deckPair);
   }, []);
 
   const pageTitle = useStore(state => {
@@ -138,9 +140,9 @@ const getHighlightedPath = (url: string): { index: number; path: Path } | null =
 export const getServerSideProps = withIronSessionSsr(async function ({ params, req }) {
   // TODO: cover all edge cases
   const { user, gun, deck } = req.session;
-  // const deckId = params?.deckId;
   // const authorized = await checkProtectedPageAuth(deckId, user, allowedDeck);
-  const authorized = user && gun ? true : false;
+  const authorized = user && gun && deck?.id === params?.deckId ? true : false;
+  const deckPair = typeof deck?.pair === 'string' ? JSON.parse(deck?.pair) : deck?.pair;
 
-  return authorized ? { props: { gun } } : { redirect: { destination: '/', permanent: false } };
+  return authorized ? { props: { userPair: gun, deckPair } } : { redirect: { destination: '/', permanent: false } };
 }, ironOptions);

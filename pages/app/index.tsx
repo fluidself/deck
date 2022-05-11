@@ -5,6 +5,7 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/router';
 import { useAccount } from 'wagmi';
 import { toast } from 'react-toastify';
+import { v4 as uuidv4 } from 'uuid';
 import { ironOptions } from 'constants/iron-session';
 import { Deck } from 'types/gun';
 import useIsMounted from 'utils/useIsMounted';
@@ -30,20 +31,29 @@ export default function AppHome() {
   const isMounted = useIsMounted();
 
   useEffect(() => {
-    // const redirect = async () => {
-    //   const deck: Deck = Object.values(decks)[0];
-    //   const { encryptedString, encryptedSymmetricKey, accessControlConditions } = deck;
-    //   const decryptedDeckKeypair = await decryptWithLit(encryptedString, encryptedSymmetricKey, accessControlConditions);
+    const redirect = async () => {
+      const deck: Deck = Object.values(decks)[0];
+      if (typeof deck === 'undefined' || !deck) return;
+      const { encryptedString, encryptedSymmetricKey, accessControlConditions } = deck;
+      const decryptedDeckKeypair = await decryptWithLit(encryptedString, encryptedSymmetricKey, accessControlConditions);
 
-    //   await authenticate(JSON.parse(decryptedDeckKeypair));
-    //   router.push(`/app/${deck.id}`);
-    // };
+      const response = await fetch('/api/deck', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ deckId: deck.id, pair: decryptedDeckKeypair }),
+      });
+      if (!response.ok) return;
 
-    // if (Object.keys(decks).length > 0) {
-    //   redirect();
-    // }
+      router.push(`/app/${deck.id}`);
+    };
+
+    if (Object.keys(decks).length > 0) {
+      redirect();
+    }
     console.log(decks);
-  }, []);
+  }, [decks]);
 
   useEffect(() => {
     const initLit = async () => {
@@ -143,25 +153,60 @@ export default function AppHome() {
               )}
               <Button
                 onClick={async () => {
-                  const deckId = '266572b7-f810-4f0a-ac43-fcc38202265b';
-                  const deck = await getGun().user(process.env.NEXT_PUBLIC_GUN_APP_PUBLIC_KEY).get('decks').get(deckId).then();
-                  const decryptedDeck = await decrypt(deck, { pair: JSON.parse(process.env.NEXT_PUBLIC_APP_ACCESS_KEY_PAIR!) });
-                  const { encryptedString, encryptedSymmetricKey, accessControlConditions } = decryptedDeck;
-                  const decryptedDeckKeypair = JSON.parse(
-                    await decryptWithLit(encryptedString, encryptedSymmetricKey, accessControlConditions),
-                  );
+                  const userPair = {
+                    pub: 'oOL8R7Z5ONXNtDbuIlM_GMfcBGqhq5MLhZo386J3gVw.pLUE52Pf2Gpcv7I1zCBy8zLNqt-eITV2XUmvm9yg9Kc',
+                    priv: 'nJ6cXM8fyrjI21mhKErJr5kK0VAiBnMii-uOh2aVOLI',
+                    epub: 'JvbNwyuYOlhQjaoXekFE6_levlN9D4VymdJSiDxaTyU.3WY8Q3LfrKr522spAPvDF-xVuSYc6bEDb00-YTRaZLY',
+                    epriv: 'y4BSKEG7PuLajwO2R0Jx3L-PZ4Mi2b3Ph_RLmAr3gMg',
+                  };
+                  const deckPair = {
+                    pub: 'OW7jIBnR-eELOLczXaFL94GDd_Y1jFsl4W6pkVLb-AI.90UvlOMEnA5ZcNlZASyo5zi0i9uTevkoq-_RTLj2NCI',
+                    priv: 'AqkMXlW-HFIzRti58cf6Hu7mACgc6epWU9o59jf7Pxc',
+                    epub: 'CdVJ6VA0dzZoHbJz0GLeQ1tnHY5oiFVKLuxsV9g-kv8.K735R7ah5NyNX3Hkl59z7cs4LD5K-yzxwo8jkIokOPY',
+                    epriv: 'K7rJzcRdgbkY5b13i7dbF-6R4hCKp7ELwX0tUa9qKZY',
+                  };
+                  const note = {
+                    id: uuidv4(),
+                    title: 'Another One',
+                    content: JSON.stringify([{ id: uuidv4(), type: 'paragraph', children: [{ text: '' }] }]),
+                    created_at: new Date().toISOString(),
+                    updated_at: new Date().toISOString(),
+                  };
+                  const encryptedNote = await encrypt(note, { pair: deckPair });
+                  const cert = await getGun().user(deckPair.pub).get('certs').get(userPair.pub).then();
+
+                  await getGun()
+                    .user(deckPair.pub)
+                    .get('notes')
+                    .get(note.id)
+                    .put(
+                      encryptedNote,
+                      (ack: any) => {
+                        console.log(ack);
+                      },
+                      { opt: { cert } },
+                    )
+                    .then();
+
+                  // const deckId = '266572b7-f810-4f0a-ac43-fcc38202265b';
+                  // const deck = await getGun().user(process.env.NEXT_PUBLIC_GUN_APP_PUBLIC_KEY).get('decks').get(deckId).then();
+                  // const decryptedDeck = await decrypt(deck, { pair: JSON.parse(process.env.NEXT_PUBLIC_APP_ACCESS_KEY_PAIR!) });
+                  // const { encryptedString, encryptedSymmetricKey, accessControlConditions } = decryptedDeck;
+                  // const decryptedDeckKeypair = JSON.parse(
+                  //   await decryptWithLit(encryptedString, encryptedSymmetricKey, accessControlConditions),
+                  // );
                   // console.log(decryptedDeck);
                   // console.log(JSON.parse(decryptedDeckKeypair));
                   // const notes = await getGun()?.get(`~${decryptedDeckKeypair.pub}`).get('notes').then();
                   // console.log(notes);
-                  getGun()
-                    ?.user(`${decryptedDeckKeypair.pub}`)
-                    .get('notes')
-                    .map()
-                    .once(async (x: any) => {
-                      const decrnote = await decrypt(x, { pair: decryptedDeckKeypair });
-                      console.log(decrnote);
-                    });
+                  // getGun()
+                  //   ?.user(`${decryptedDeckKeypair.pub}`)
+                  //   .get('notes')
+                  //   .map()
+                  //   .once(async (x: any) => {
+                  //     const decrnote = await decrypt(x, { pair: decryptedDeckKeypair });
+                  //     console.log(decrnote);
+                  //   });
                   // await authenticate(JSON.parse(decryptedDeckKeypair));
                   // router.push(`/app/${deckId}`);
                 }}
@@ -180,10 +225,10 @@ export const getServerSideProps = withIronSessionSsr(async function ({ req }) {
   const { user, gun, deck } = req.session;
   console.log(user, gun, deck);
 
-  // if (user && gun && deck) {
-  //   return { redirect: { destination: `/app/${deck.id}`, permanent: false } };
-  // } else {
-  //   return user ? { props: {} } : { redirect: { destination: '/', permanent: false } };
-  // }
-  return user ? { props: {} } : { redirect: { destination: '/', permanent: false } };
+  if (user && gun && deck) {
+    // return { redirect: { destination: `/app/${deck.id}`, permanent: false } };
+    return user ? { props: {} } : { redirect: { destination: '/', permanent: false } };
+  } else {
+    return user ? { props: {} } : { redirect: { destination: '/', permanent: false } };
+  }
 }, ironOptions);

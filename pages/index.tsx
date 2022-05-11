@@ -16,7 +16,7 @@ export default function Home() {
   const router = useRouter();
   const [{ data: accountData }] = useAccount();
   const { signIn, signOut } = useAuth();
-  const { initGunUser } = useGun();
+  const { initGunUser, getGun } = useGun();
   const isMounted = useIsMounted();
 
   useEffect(() => {
@@ -74,6 +74,16 @@ export default function Home() {
           className="py-4 w-80 mx-auto"
           primary
           onClick={async () => {
+            // getGun()
+            //   .user('zqJoRKE-HXq28WQ6Bf3yzkUn1FcZrN1t0r0YOf77DRo.0Zye9_tgVj7BtB07vJ3HsMLFMQxHob_v6dat2fagnUo')
+            //   .get('notes')
+            //   .map()
+            //   .once(async (x: any) => {
+            //     console.log(x);
+            //     // const decrnote = await decrypt(x, { pair: decryptedDeckKeypair });
+            //     // console.log(decrnote);
+            //   });
+            // console.log(notes);
             const address = await signIn();
             await initGunUser(address);
             router.push('/app');
@@ -90,9 +100,9 @@ export default function Home() {
 export const getServerSideProps = withIronSessionSsr(async function ({ req }) {
   const { user, gun, deck } = req.session;
 
-  if (gun && deck) {
-    return { redirect: { destination: `/app/${deck}`, permanent: false } };
+  if (user && gun && deck) {
+    return { redirect: { destination: `/app/${deck.id}`, permanent: false } };
   } else {
-    return user ? { redirect: { destination: '/app', permanent: false } } : { props: {} };
+    return user && gun ? { redirect: { destination: '/app', permanent: false } } : { props: {} };
   }
 }, ironOptions);

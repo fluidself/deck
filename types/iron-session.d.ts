@@ -11,7 +11,7 @@ declare module 'iron-session' {
     gun?: ISEAPair;
     deck?: {
       id: string;
-      pair: ISEAPair;
+      pair: any;
     };
   }
 }
