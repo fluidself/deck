@@ -33,9 +33,10 @@ export default function AppLayout(props: Props) {
   } = router;
   const { user, isLoaded, signOut } = useAuth();
   const [{ data: accountData }] = useAccount();
-  const { isReady, getUser } = useGun();
+  const { isReady, getUser, getGun } = useGun();
   const { upsertNote: upsertDbNote, notesReady, getNotes } = useNotes();
   const [isPageLoaded, setIsPageLoaded] = useState(false);
+  const deckPair = useStore(state => state.deckPair);
   const isMounted = useIsMounted();
 
   useEffect(() => {
@@ -46,14 +47,6 @@ export default function AppLayout(props: Props) {
       accountData?.connector?.off('disconnect', onDisconnect);
     };
   }, [accountData?.connector, signOut]);
-
-  // useEffect(() => {
-  //   const dostuff = async () => {
-  //     const notes = await getNotes();
-  //     console.log(notes);
-  //   };
-  //   dostuff();
-  // });
 
   useEffect(() => {
     if (!isPageLoaded && isLoaded && user) {
@@ -106,7 +99,7 @@ export default function AppLayout(props: Props) {
     }
 
     // Handle note tree
-    const storedNoteTree = await getUser()?.get('note_tree').then();
+    const storedNoteTree = await getGun().user(deckPair.pub).get('note_tree').then();
     const notesAsObj = store.getState().notes;
 
     if (storedNoteTree && typeof storedNoteTree !== 'undefined') {

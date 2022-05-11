@@ -47,7 +47,7 @@ export default function useDeck() {
     };
 
     initData();
-  }, []);
+  }, [user]);
 
   // const checkReauthenticate = async () => {
   //   if (!process.env.NEXT_PUBLIC_APP_ACCESS_KEY_PAIR) return;
@@ -112,7 +112,7 @@ export default function useDeck() {
       accessControlConditions,
     );
 
-    const certificate = await SEA.certify(userPair.pub, [{ '*': 'notes' }, { '*': 'note_tree' }], deckPair);
+    const certificate = await SEA.certify(userPair.pub, [{ '*': 'notes' }, 'note_tree'], deckPair);
     await authenticate(deckPair);
     await getUser()?.get('certs').get(userPair.pub).put(certificate).then();
 

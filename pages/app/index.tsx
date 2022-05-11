@@ -32,7 +32,8 @@ export default function AppHome() {
 
   useEffect(() => {
     const redirect = async () => {
-      const deck: Deck = Object.values(decks)[0];
+      // const deck: Deck = Object.values(decks)[0];
+      const deck = decks['a8e23ad4-be36-4b35-ae43-1739b80ffab6'];
       if (typeof deck === 'undefined' || !deck) return;
       const { encryptedString, encryptedSymmetricKey, accessControlConditions } = deck;
       const decryptedDeckKeypair = await decryptWithLit(encryptedString, encryptedSymmetricKey, accessControlConditions);
@@ -52,7 +53,7 @@ export default function AppHome() {
     if (Object.keys(decks).length > 0) {
       redirect();
     }
-    console.log(decks);
+    // console.log(decks);
   }, [decks]);
 
   useEffect(() => {
@@ -85,7 +86,7 @@ export default function AppHome() {
 
     toast.success(`Successfully created ${deckName}`);
     setCreatingDeck(false);
-    // router.push(`/app/${deckId}`);
+    router.push(`/app/${deckId}`);
   };
 
   const verifyDeckAccess = async (requestedDeck: string) => {

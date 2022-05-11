@@ -97,6 +97,8 @@ export const GunProvider = ({ children }: Props) => {
         }
         // userRef.current = gunRef.current.user();
 
+        accessTokenRef.current = process.env.APP_ACCESS_TOKEN_SECRET;
+
         setIsReady(true);
       }
     };
