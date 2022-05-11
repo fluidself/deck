@@ -103,6 +103,7 @@ export default function AppLayout(props: Props) {
     const notesAsObj = store.getState().notes;
 
     if (storedNoteTree && typeof storedNoteTree !== 'undefined') {
+      console.log(storedNoteTree);
       const noteTree: NoteTreeItem[] = [...JSON.parse(storedNoteTree)];
       // This is a sanity check for removing notes in the noteTree that do not exist
       removeNonexistentNotes(noteTree, notesAsObj);

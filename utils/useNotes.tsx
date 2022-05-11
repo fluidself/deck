@@ -26,6 +26,7 @@ export default function useNotes() {
 
   useEffect(() => {
     const initData = async () => {
+      // TODO: why is this sometimes empty?
       if (!deckPair.pub) {
         console.log(deckPair.pub);
         return;

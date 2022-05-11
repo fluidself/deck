@@ -35,7 +35,8 @@ function useProvideDeck(deckId: string): CurrentDeck {
 }
 
 export function ProvideCurrentDeck({ children, deckId }: { children: ReactNode; deckId: string }) {
-  const deck = useProvideDeck(deckId);
+  // const deck = useProvideDeck(deckId);
+  const deck = { deck: { id: deckId } };
 
   return <CurrentDeckContext.Provider value={deck}>{children}</CurrentDeckContext.Provider>;
 }

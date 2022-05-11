@@ -74,16 +74,6 @@ export default function Home() {
           className="py-4 w-80 mx-auto"
           primary
           onClick={async () => {
-            // getGun()
-            //   .user('zqJoRKE-HXq28WQ6Bf3yzkUn1FcZrN1t0r0YOf77DRo.0Zye9_tgVj7BtB07vJ3HsMLFMQxHob_v6dat2fagnUo')
-            //   .get('notes')
-            //   .map()
-            //   .once(async (x: any) => {
-            //     console.log(x);
-            //     // const decrnote = await decrypt(x, { pair: decryptedDeckKeypair });
-            //     // console.log(decrnote);
-            //   });
-            // console.log(notes);
             const address = await signIn();
             await initGunUser(address);
             router.push('/app');

@@ -138,11 +138,9 @@ const getHighlightedPath = (url: string): { index: number; path: Path } | null =
 };
 
 export const getServerSideProps = withIronSessionSsr(async function ({ params, req }) {
-  // TODO: cover all edge cases
   const { user, gun, deck } = req.session;
   // const authorized = await checkProtectedPageAuth(deckId, user, allowedDeck);
   const authorized = user && gun && deck?.id === params?.deckId ? true : false;
-  const deckPair = typeof deck?.pair === 'string' ? JSON.parse(deck?.pair) : deck?.pair;
 
-  return authorized ? { props: { userPair: gun, deckPair } } : { redirect: { destination: '/', permanent: false } };
+  return authorized ? { props: { userPair: gun, deckPair: deck?.pair } } : { redirect: { destination: '/', permanent: false } };
 }, ironOptions);

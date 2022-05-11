@@ -43,7 +43,7 @@ export default function AppHome() {
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ deckId: deck.id, pair: decryptedDeckKeypair }),
+        body: JSON.stringify({ deckId: deck.id, pair: JSON.parse(decryptedDeckKeypair) }),
       });
       if (!response.ok) return;
 
@@ -224,11 +224,9 @@ export default function AppHome() {
 
 export const getServerSideProps = withIronSessionSsr(async function ({ req }) {
   const { user, gun, deck } = req.session;
-  console.log(user, gun, deck);
 
   if (user && gun && deck) {
-    // return { redirect: { destination: `/app/${deck.id}`, permanent: false } };
-    return user ? { props: {} } : { redirect: { destination: '/', permanent: false } };
+    return { redirect: { destination: `/app/${deck.id}`, permanent: false } };
   } else {
     return user ? { props: {} } : { redirect: { destination: '/', permanent: false } };
   }

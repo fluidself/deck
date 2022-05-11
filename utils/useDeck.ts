@@ -9,7 +9,7 @@ import { encryptWithLit, decryptWithLit, encrypt, decrypt } from 'utils/encrypti
 import createOnboardingNotes from 'utils/createOnboardingNotes';
 import { useAuth } from 'utils/useAuth';
 import useGun from 'utils/useGun';
-import { store } from 'lib/store';
+import { useStore } from 'lib/store';
 
 export default function useDeck() {
   const router = useRouter();
@@ -20,6 +20,8 @@ export default function useDeck() {
   const { user } = useAuth();
   const [decks, setDecks] = useState<{ [key: string]: Deck }>({});
   const [decksReady, setDecksReady] = useState<boolean>(false);
+  const userPair = useStore(state => state.userPair);
+  const deckPair = useStore(state => state.deckPair);
 
   useEffect(() => {
     const initData = async () => {
@@ -181,7 +183,6 @@ export default function useDeck() {
   const provisionAccess = async (acc: AccessControlCondition[]) => {
     if (!deckId || typeof deckId !== 'string' || !acc || !user?.id) return;
 
-    const deckPair: ISEAPair = store.getState().deckPair;
     const accessControlConditions: (AccessControlCondition | BooleanCondition)[] = [
       {
         contractAddress: '',
@@ -201,38 +202,80 @@ export default function useDeck() {
       JSON.stringify(deckPair),
       accessControlConditions,
     );
-
-    const appKeypair = JSON.parse(process.env.NEXT_PUBLIC_APP_ACCESS_KEY_PAIR!);
-    await authenticate(appKeypair);
-
+    const appPair = JSON.parse(process.env.NEXT_PUBLIC_APP_ACCESS_KEY_PAIR!);
     const updates = {
       encryptedString: encryptedStringBase64,
       encryptedSymmetricKey: encryptedSymmetricKeyBase64,
       accessControlConditions: JSON.stringify(accessControlConditions),
     };
-    const encUpdates = await encrypt(updates, { pair: appKeypair });
+    const encUpdates = await encrypt(updates, { pair: appPair });
+    const hashedAddr = await SEA.work(user.id, appPair, null, { name: 'SHA-256' });
 
+    await authenticate(appPair);
     await getUser()?.get('decks').get(deckId).get('encryptedString').put(encUpdates.encryptedString).then();
     await getUser()?.get('decks').get(deckId).get('encryptedSymmetricKey').put(encUpdates.encryptedSymmetricKey).then();
     await getUser()?.get('decks').get(deckId).get('accessControlConditions').put(encUpdates.accessControlConditions).then();
+    await getUser()
+      ?.get('users')
+      .get(hashedAddr!)
+      .get('decks')
+      .get(deckId)
+      .get('encryptedString')
+      .put(encUpdates.encryptedString)
+      .then();
+    await getUser()
+      ?.get('users')
+      .get(hashedAddr!)
+      .get('decks')
+      .get(deckId)
+      .get('encryptedSymmetricKey')
+      .put(encUpdates.encryptedSymmetricKey)
+      .then();
+    await getUser()
+      ?.get('users')
+      .get(hashedAddr!)
+      .get('decks')
+      .get(deckId)
+      .get('accessControlConditions')
+      .put(encUpdates.accessControlConditions)
+      .then();
 
-    await authenticate(deckPair);
+    // TOOO: revoke certificates?
+    await authenticate(userPair);
   };
 
   const verifyAccess = async (requestedDeckId: string) => {
-    const pair = JSON.parse(process.env.NEXT_PUBLIC_APP_ACCESS_KEY_PAIR!);
-    await authenticate(pair);
+    // @ts-ignore
+    const userPair = getUser()?._.sea;
+    const appPair = JSON.parse(process.env.NEXT_PUBLIC_APP_ACCESS_KEY_PAIR!);
+    const storedDeck = await getGun()
+      ?.user(`${process.env.NEXT_PUBLIC_GUN_APP_PUBLIC_KEY}`)
+      .get('decks')
+      .get(requestedDeckId)
+      .then();
 
-    const deck = await getUser()?.get('decks').get(requestedDeckId).then();
-    if (!deck) {
-      throw new Error('Unable to verify access');
-    }
+    if (!storedDeck) throw new Error('Unable to verify access');
 
-    const decryptedDeck = await decrypt(deck, { pair });
+    const decryptedDeck = await decrypt(storedDeck, { pair: appPair });
     const { encryptedString, encryptedSymmetricKey, accessControlConditions } = decryptedDeck;
     const decryptedDeckKeypair = await decryptWithLit(encryptedString, encryptedSymmetricKey, accessControlConditions);
+    if (!decryptedDeckKeypair) throw new Error('Unable to verify access');
 
-    await authenticate(JSON.parse(decryptedDeckKeypair));
+    const deckPair = JSON.parse(decryptedDeckKeypair);
+    const certificate = await SEA.certify(userPair.pub, [{ '*': 'notes' }, 'note_tree'], deckPair);
+    await authenticate(deckPair);
+    await getUser()?.get('certs').get(userPair.pub).put(certificate).then();
+
+    const response = await fetch('/api/deck', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ deckId: decryptedDeck.id, pair: deckPair }),
+    });
+    if (!response.ok) throw new Error('Unable to verify access');
+
+    return;
   };
 
   return {

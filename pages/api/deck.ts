@@ -15,7 +15,7 @@ const handler = async (req: NextApiRequest, res: NextApiResponse) => {
     return res.json({ ok: false });
   }
 
-  req.session.deck = { id: deckId, pair: pair };
+  req.session.deck = { id: deckId, pair: typeof pair === 'string' ? JSON.parse(pair) : pair };
   await req.session.save();
   res.json({ ok: true });
 };
