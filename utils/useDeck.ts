@@ -161,7 +161,21 @@ export default function useDeck() {
         );
     });
 
-  // const renameDeck = useCallback(async () => {}, []);
+  const renameDeck = async (deckName: string) => {
+    if (!deckId || typeof deckId !== 'string' || !deckName || !user?.id) return;
+
+    // TODO: enforce onlyOwner? or just filter out UI option for others
+    const appPair = JSON.parse(process.env.NEXT_PUBLIC_APP_ACCESS_KEY_PAIR!);
+    const updates = { name: deckName };
+    const encUpdates = await encrypt(updates, { pair: appPair });
+    const hashedAddr = await SEA.work(user.id, appPair, null, { name: 'SHA-256' });
+
+    await authenticate(appPair);
+    await getUser()?.get('decks').get(deckId).get('name').put(encUpdates.name).then();
+    await getUser()?.get('users').get(hashedAddr!).get('decks').get(deckId).get('name').put(encUpdates.name).then();
+
+    await authenticate(userPair);
+  };
 
   // const deleteDeck = useCallback(async () => {}, []);
 
@@ -270,7 +284,7 @@ export default function useDeck() {
     decksReady,
     // getDecks,
     createDeck,
-    // renameDeck,
+    renameDeck,
     // deleteDeck,
     provisionAccess,
     verifyAccess,

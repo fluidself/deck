@@ -10,6 +10,7 @@ import {
   IconPencil,
 } from '@tabler/icons';
 import { useAuth } from 'utils/useAuth';
+import useDeck from 'utils/useDeck';
 import { useStore } from 'lib/store';
 import Tooltip from 'components/Tooltip';
 import { DropdownItem } from 'components/Dropdown';
@@ -22,6 +23,7 @@ type Props = {
 export default function Header(props: Props) {
   const { setIsShareModalOpen, setCreateJoinRenameModal } = props;
   const { signOut } = useAuth();
+  const { decks } = useDeck();
   const setIsSidebarOpen = useStore(state => state.setIsSidebarOpen);
 
   return (
