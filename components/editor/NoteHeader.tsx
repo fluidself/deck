@@ -42,26 +42,26 @@ export default function NoteHeader() {
   const currentNote = useCurrentNote();
   const onImport = useImport();
   const { user } = useAuth();
-  const { deck } = useCurrentDeck();
-  const { decks } = useDeck();
-  const [deckOptions, setDeckOptions] = useState<any>(null);
-  const [selectedDeck, setSelectedDeck] = useState<any>(null);
+  // const { deck } = useCurrentDeck();
+  // const { decks } = useDeck();
+  // const [deckOptions, setDeckOptions] = useState<any>(null);
+  // const [selectedDeck, setSelectedDeck] = useState<any>(null);
   const router = useRouter();
   const {
     query: { deckId, stack: stackQuery },
   } = router;
 
-  useEffect(() => {
-    if (Object.keys(decks).length > 0) {
-      const decksToOptions = Object.values(decks)?.map(deck => ({
-        label: `${deck.name} (${deck.id})`,
-        id: deck.id,
-        value: deck.id,
-      }));
-      setDeckOptions(decksToOptions);
-      setSelectedDeck(decksToOptions?.find(deckOption => deckOption.id === deck?.id));
-    }
-  }, [Object.keys(decks).length, deck?.id]);
+  // useEffect(() => {
+  //   if (Object.keys(decks).length > 0) {
+  //     const decksToOptions = Object.values(decks)?.map(deck => ({
+  //       label: `${deck.name} (${deck.id})`,
+  //       id: deck.id,
+  //       value: deck.id,
+  //     }));
+  //     setDeckOptions(decksToOptions);
+  //     setSelectedDeck(decksToOptions?.find(deckOption => deckOption.id === deck?.id));
+  //   }
+  // }, [Object.keys(decks).length, deck?.id]);
 
   const isSidebarButtonVisible = useStore(state => !state.isSidebarOpen && state.openNoteIds?.[0] === currentNote.id);
   const isCloseButtonVisible = useStore(state => state.openNoteIds.length > 1);
@@ -147,46 +147,50 @@ export default function NoteHeader() {
           </Tooltip>
         ) : null}
         <div className="inline-flex justify-center">
-          {!isCloseButtonVisible && user && (
+          {/* {!isCloseButtonVisible && user && (
             <div className="flex items-center">
-              <div className="mr-3">
-                <Select
-                  className="react-select-container-header"
-                  classNamePrefix="react-select-header"
-                  options={deckOptions}
-                  value={selectedDeck}
-                  onChange={async value => {
-                    setSelectedDeck(value);
+              {deckOptions && (
+                <>
+                  <div className="mr-3">
+                    <Select
+                      className="react-select-container-header"
+                      classNamePrefix="react-select-header"
+                      options={deckOptions}
+                      value={selectedDeck}
+                      onChange={async value => {
+                        setSelectedDeck(value);
 
-                    const deck: Deck = Object.values(decks).find(deck => deck.id === value.id)!;
-                    const { encryptedString, encryptedSymmetricKey, accessControlConditions } = deck;
-                    const decryptedDeckKeypair = await decryptWithLit(
-                      encryptedString,
-                      encryptedSymmetricKey,
-                      accessControlConditions,
-                    );
+                        const deck: Deck = Object.values(decks).find(deck => deck.id === value.id)!;
+                        const { encryptedString, encryptedSymmetricKey, accessControlConditions } = deck;
+                        const decryptedDeckKeypair = await decryptWithLit(
+                          encryptedString,
+                          encryptedSymmetricKey,
+                          accessControlConditions,
+                        );
 
-                    const response = await fetch('/api/deck', {
-                      method: 'POST',
-                      headers: {
-                        'Content-Type': 'application/json',
-                      },
-                      body: JSON.stringify({ deckId: deck.id, pair: JSON.parse(decryptedDeckKeypair) }),
-                    });
-                    if (!response.ok) return;
+                        const response = await fetch('/api/deck', {
+                          method: 'POST',
+                          headers: {
+                            'Content-Type': 'application/json',
+                          },
+                          body: JSON.stringify({ deckId: deck.id, pair: JSON.parse(decryptedDeckKeypair) }),
+                        });
+                        if (!response.ok) return;
 
-                    window.location.assign(`${process.env.BASE_URL}/app/${deck.id}`);
-                  }}
-                />
-              </div>
-              <NoteHeaderDivider />
+                        window.location.assign(`${process.env.BASE_URL}/app/${deck.id}`);
+                      }}
+                    />
+                  </div>
+                  <NoteHeaderDivider />
+                </>
+              )}
               <div className="px-2 pt-1 pb-1 text-sm text-gray-600 overflow-ellipsis dark:text-gray-400">
                 {user ? addEllipsis(user?.id) : ''}
               </div>
               <Identicon diameter={16} className="w-5 h-5 mr-2" />
               <NoteHeaderDivider />
             </div>
-          )}
+          )} */}
           <Menu>
             {({ open }) => (
               <>
@@ -207,8 +211,6 @@ export default function NoteHeader() {
                       {...attributes.popper}
                     >
                       <DropdownItem onClick={onMintClick}>
-                        {/* <NFTIcon className="w-5 h-5 mr-1" />
-                        <span>Mint as NFT</span> */}
                         <IconSend size={18} className="mr-1" />
                         <span>Publish</span>
                       </DropdownItem>

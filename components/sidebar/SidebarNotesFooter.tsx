@@ -17,13 +17,13 @@ function SidebarNotesFooter(props: Props) {
   const { noteSort, numOfNotes, setIsFindOrCreateModalOpen } = props;
   const onImport = useImport();
 
-  const setNoteSort = useStore((state) => state.setNoteSort);
-  const setIsSidebarOpen = useStore((state) => state.setIsSidebarOpen);
+  const setNoteSort = useStore(state => state.setNoteSort);
+  const setIsSidebarOpen = useStore(state => state.setIsSidebarOpen);
   const onCreateNoteClick = useCallback(() => {
     if (isMobile()) {
       setIsSidebarOpen(false);
     }
-    setIsFindOrCreateModalOpen((isOpen) => !isOpen);
+    setIsFindOrCreateModalOpen(isOpen => !isOpen);
   }, [setIsSidebarOpen, setIsFindOrCreateModalOpen]);
 
   return (
@@ -40,19 +40,13 @@ function SidebarNotesFooter(props: Props) {
         {numOfNotes} notes
       </span>
       <div className="flex mx-2 my-1">
-        <SidebarNotesSortDropdown
-          currentSort={noteSort}
-          setCurrentSort={setNoteSort}
-        />
+        <SidebarNotesSortDropdown currentSort={noteSort} setCurrentSort={setNoteSort} />
         <Tooltip content="Import">
           <button
             className="p-1 rounded hover:bg-gray-200 active:bg-gray-300 dark:hover:bg-gray-700 dark:active:bg-gray-600"
             onClick={onImport}
           >
-            <IconDownload
-              size={16}
-              className="text-gray-600 dark:text-gray-300"
-            />
+            <IconDownload size={16} className="text-gray-600 dark:text-gray-300" />
           </button>
         </Tooltip>
       </div>

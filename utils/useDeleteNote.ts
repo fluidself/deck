@@ -16,6 +16,15 @@ export default function useDeleteNote(noteId: string) {
     if (!deck) return;
     const deletedNoteIndex = openNoteIds.findIndex(openNoteId => openNoteId === noteId);
 
+    await deleteNote(noteId);
+
+    const deleteBacklinkPayloads = deleteBacklinks(noteId);
+    const promises = [];
+    for (const data of deleteBacklinkPayloads) {
+      promises.push(updateNote(data));
+    }
+    await Promise.all(promises);
+
     if (deletedNoteIndex !== -1) {
       // Redirect if one of the notes that was deleted was open
       const noteIds = Object.keys(store.getState().notes);
@@ -29,20 +38,11 @@ export default function useDeleteNote(noteId: string) {
           }
         }
       } else {
-        // No note ids to redirect to, redirect to app
+        // No note ids to redirect to, redirect to DECK root
         router.push(`/app/${deck.id}`);
       }
     }
-
-    await deleteNote(noteId);
-
-    const deleteBacklinkPayloads = deleteBacklinks(noteId);
-    const promises = [];
-    for (const data of deleteBacklinkPayloads) {
-      promises.push(updateNote(data));
-    }
-    await Promise.all(promises);
-  }, [router, noteId, openNoteIds, deleteNote, updateNote]);
+  }, [router, noteId, deck, openNoteIds, deleteNote, updateNote, deleteBacklinks]);
 
   return onDeleteClick;
 }

@@ -86,12 +86,16 @@ export default function useNotes() {
         const encryptedNote = await encrypt(note, { pair: deckPair });
         const cert = await getGun().user(deckPair.pub).get('certs').get(userPair.pub).then();
 
-        getGun().user(deckPair.pub).get('notes').get(note.id).put(encryptedNote, null, { opt: { cert } });
+        await getGun().user(deckPair.pub).get('notes').get(note.id).put(encryptedNote, null, { opt: { cert } }).then();
 
         // Refresh the list of notes in the sidebar
-        store.getState().upsertNote({ ...note, content: JSON.parse(note.content) });
+        await store.getState().upsertNote({ ...note, content: JSON.parse(note.content) });
 
-        getGun().user(deckPair.pub).get('note_tree').put(JSON.stringify(store.getState().noteTree), null, { opt: { cert } });
+        await getGun()
+          .user(deckPair.pub)
+          .get('note_tree')
+          .put(JSON.stringify(store.getState().noteTree), null, { opt: { cert } })
+          .then();
 
         resolve(note.id);
       } catch (err) {
@@ -108,11 +112,11 @@ export default function useNotes() {
       const encryptedNote = await encrypt(note, { pair: deckPair });
       const cert = await getGun().user(deckPair.pub).get('certs').get(userPair.pub).then();
 
-      return new Promise<void>(resolve => {
-        getGun().user(deckPair.pub).get('notes').get(note.id).put(encryptedNote, null, { opt: { cert } });
+      return new Promise<void>(async resolve => {
+        await getGun().user(deckPair.pub).get('notes').get(note.id).put(encryptedNote, null, { opt: { cert } }).then();
 
         // Update updated_at locally
-        store.getState().updateNote({ id: note.id, updated_at: note.updated_at });
+        await store.getState().updateNote({ id: note.id, updated_at: note.updated_at });
 
         resolve();
       });
@@ -124,13 +128,17 @@ export default function useNotes() {
   const deleteNote = async (noteId: string) => {
     const cert = await getGun().user(deckPair.pub).get('certs').get(userPair.pub).then();
 
-    return new Promise<void>(resolve => {
-      getGun().user(deckPair.pub).get('notes').get(noteId).put(null, null, { opt: { cert } });
+    return new Promise<void>(async resolve => {
+      await getGun().user(deckPair.pub).get('notes').get(noteId).put(null, null, { opt: { cert } }).then();
 
-      getGun().user(deckPair.pub).get('note_tree').put(JSON.stringify(store.getState().noteTree), null, { opt: { cert } });
+      await getGun()
+        .user(deckPair.pub)
+        .get('note_tree')
+        .put(JSON.stringify(store.getState().noteTree), null, { opt: { cert } })
+        .then();
 
       // Update note titles in sidebar
-      store.getState().deleteNote(noteId);
+      await store.getState().deleteNote(noteId);
       resolve();
     });
   };

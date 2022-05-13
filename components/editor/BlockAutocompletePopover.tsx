@@ -70,11 +70,11 @@ export default function BlockAutocompletePopover() {
   let isMounted = true;
 
   const getRegexResult = useCallback(() => {
+    if (!isMounted) return { result: [], onOwnLine: false };
     const REGEX = /(?:^|\s)(\(\()(.+)/;
     const { selection } = editor;
 
     const returnValue: { result: RegExpMatchArray | null; onOwnLine: boolean } = { result: null, onOwnLine: false };
-    if (!isMounted) return returnValue;
 
     if (!selection || !Range.isCollapsed(selection)) {
       return returnValue;
