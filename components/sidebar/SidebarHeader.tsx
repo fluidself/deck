@@ -1,3 +1,4 @@
+import { useState, useEffect } from 'react';
 import { Menu } from '@headlessui/react';
 import {
   IconLogout,
@@ -11,6 +12,7 @@ import {
 } from '@tabler/icons';
 import { useAuth } from 'utils/useAuth';
 import useDeck from 'utils/useDeck';
+import { useCurrentDeck } from 'utils/useCurrentDeck';
 import { useStore } from 'lib/store';
 import Tooltip from 'components/Tooltip';
 import { DropdownItem } from 'components/Dropdown';
@@ -24,7 +26,17 @@ export default function Header(props: Props) {
   const { setIsShareModalOpen, setCreateJoinRenameModal } = props;
   const { signOut } = useAuth();
   const { decks } = useDeck();
+  const { deck } = useCurrentDeck();
   const setIsSidebarOpen = useStore(state => state.setIsSidebarOpen);
+  const [isOwner, setIsOwner] = useState<boolean>(false);
+
+  useEffect(() => {
+    if (Object.keys(decks).length) {
+      if (Object.values(decks).findIndex(d => d.id === deck.id) > -1) {
+        setIsOwner(true);
+      }
+    }
+  }, [Object.keys(decks).length, deck]);
 
   return (
     <>
@@ -48,14 +60,18 @@ export default function Header(props: Props) {
             </Tooltip>
           </Menu.Button>
           <Menu.Items className="absolute z-20 w-56 overflow-hidden bg-white rounded left-6 top-full shadow-popover dark:bg-gray-800 focus:outline-none border border-gray-500">
-            <DropdownItem className="" onClick={() => setIsShareModalOpen(true)}>
-              <IconShare size={18} className="mr-1" />
-              <span>Share</span>
-            </DropdownItem>
-            <DropdownItem className="" onClick={() => setCreateJoinRenameModal({ open: true, type: 'rename' })}>
-              <IconPencil size={18} className="mr-1" />
-              <span>Rename</span>
-            </DropdownItem>
+            {isOwner && (
+              <>
+                <DropdownItem className="" onClick={() => setIsShareModalOpen(true)}>
+                  <IconShare size={18} className="mr-1" />
+                  <span>Share</span>
+                </DropdownItem>
+                <DropdownItem className="" onClick={() => setCreateJoinRenameModal({ open: true, type: 'rename' })}>
+                  <IconPencil size={18} className="mr-1" />
+                  <span>Rename</span>
+                </DropdownItem>
+              </>
+            )}
             <DropdownItem className="" onClick={() => setCreateJoinRenameModal({ open: true, type: 'join' })}>
               <IconGitPullRequest size={18} className="mr-1" />
               <span>Join</span>
