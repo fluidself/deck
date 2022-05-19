@@ -12,6 +12,7 @@ import { store } from 'lib/store';
 import useDebounce from 'utils/useDebounce';
 import useNotes from 'utils/useNotes';
 import EditorPopover from './EditorPopover';
+import useIsMounted from 'utils/useIsMounted';
 
 const DEBOUNCE_MS = 100;
 
@@ -34,6 +35,7 @@ export default function BlockAutocompletePopover() {
   const { deck } = useCurrentDeck();
   const { updateNote } = useNotes();
   const editor = useSlate();
+  const isMounted = useIsMounted();
 
   const [isVisible, setIsVisible] = useState(false);
   const [selectedOptionIndex, setSelectedOptionIndex] = useState<number>(0);
@@ -67,10 +69,10 @@ export default function BlockAutocompletePopover() {
     setSelectedOptionIndex(0);
   }, []);
 
-  let isMounted = true;
+  // let isMounted = true;
 
   const getRegexResult = useCallback(() => {
-    if (!isMounted) return { result: [], onOwnLine: false };
+    if (!isMounted()) return { result: [], onOwnLine: false };
     const REGEX = /(?:^|\s)(\(\()(.+)/;
     const { selection } = editor;
 
@@ -110,14 +112,14 @@ export default function BlockAutocompletePopover() {
     setInputText(inputText);
     setIsVisible(true);
 
-    return () => {
-      isMounted = false;
-    };
+    // return () => {
+    //   isMounted = false;
+    // };
   }, [editor.children, getRegexResult, hidePopover]);
 
   const onOptionClick = useCallback(
     async (option?: Option) => {
-      if (!option || !deck) {
+      if (!option || !deck || !isMounted()) {
         return;
       }
 

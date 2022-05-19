@@ -142,23 +142,13 @@ export default function useDeck() {
   };
 
   const addNote = async (deckPair: ISEAPair, cert: any, note: any) =>
-    new Promise<void>(async (resolve, reject) => {
+    new Promise(async (resolve, reject) => {
       const encryptedNote = await encrypt(note, { pair: deckPair });
       getGun()
         .user(deckPair.pub)
         .get('notes')
         .get(note.id)
-        .put(
-          encryptedNote,
-          (ack: any) => {
-            if (ack.err) {
-              reject();
-            } else {
-              resolve();
-            }
-          },
-          { opt: { cert } },
-        );
+        .put(encryptedNote, (ack: any) => (ack.err ? reject(ack.err) : resolve(note)), { opt: { cert } });
     });
 
   const renameDeck = async (deckName: string) => {

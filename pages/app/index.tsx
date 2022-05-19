@@ -29,7 +29,7 @@ export default function AppHome() {
   useEffect(() => {
     const redirect = async () => {
       // const deck: Deck = Object.values(decks)[0];
-      const deck = decks['a8e23ad4-be36-4b35-ae43-1739b80ffab6'];
+      const deck = decks['961624ea-f6b3-4f63-9454-b769a09c039d'];
       if (typeof deck === 'undefined' || !deck) return;
       const { encryptedString, encryptedSymmetricKey, accessControlConditions } = deck;
       const decryptedDeckKeypair = await decryptWithLit(encryptedString, encryptedSymmetricKey, accessControlConditions);

@@ -57,24 +57,24 @@ export const GunProvider = ({ children }: Props) => {
     const initGun = async () => {
       if (!gunRef.current) {
         // @ts-ignore
-        Gun.on('opt', ctx => {
-          // if (ctx.once) return;
+        // Gun.on('opt', ctx => {
+        //   // if (ctx.once) return;
 
-          ctx.on('out', function (msg: any) {
-            // @ts-ignore
-            const to = this.to;
-            // Adds headers for put
-            msg.headers = {
-              accessToken: accessTokenRef.current,
-            };
-            to.next(msg); // pass to next middleware
+        //   ctx.on('out', function (msg: any) {
+        //     // @ts-ignore
+        //     const to = this.to;
+        //     // Adds headers for put
+        //     msg.headers = {
+        //       accessToken: accessTokenRef.current,
+        //     };
+        //     to.next(msg); // pass to next middleware
 
-            if (msg.err === 'Invalid access token') {
-              // TODO handle invalid access token
-              console.error(msg.err);
-            }
-          });
-        });
+        //     if (msg.err === 'Invalid access token') {
+        //       // TODO handle invalid access token
+        //       console.error(msg.err);
+        //     }
+        //   });
+        // });
 
         gunRef.current = Gun({
           peers: NEXT_PUBLIC_GUN_PEERS,

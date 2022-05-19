@@ -19,6 +19,7 @@ import Sidebar from './sidebar/Sidebar';
 import FindOrCreateModal from './FindOrCreateModal';
 import PageLoading from './PageLoading';
 import OfflineBanner from './OfflineBanner';
+import { useGunCollectionState } from 'utils/gun-hooks';
 
 type Props = {
   children: ReactNode;
@@ -34,7 +35,7 @@ export default function AppLayout(props: Props) {
   const { user, isLoaded, signOut } = useAuth();
   const [{ data: accountData }] = useAccount();
   const { isReady, getUser, getGun } = useGun();
-  const { upsertNote: upsertDbNote, notesReady } = useNotes();
+  const { notes, upsertNote: upsertDbNote, notesReady } = useNotes();
   const [isPageLoaded, setIsPageLoaded] = useState(false);
   const isMounted = useIsMounted();
 
@@ -58,16 +59,28 @@ export default function AppLayout(props: Props) {
   }, [isPageLoaded, isLoaded, user]);
 
   const deckPair = useStore(state => state.deckPair);
+  // const userPair = useStore(state => state.deckPair);
   const setDeckPair = useStore(state => state.setDeckPair);
+  const setUserPair = useStore(state => state.setUserPair);
   const setNoteTree = useStore(state => state.setNoteTree);
   // const setDeckId = useStore(state => state.setDeckId);
+
+  // if (getGun()?.user) {
+  //   const { collection, addToSet, updateInSet, removeFromSet } = useGunCollectionState(getGun()?.user(deckPair.pub).get('notes'));
+  // }
 
   const initDeck = async () => {
     const res = await fetch('/api/deck');
     const { deck } = await res.json();
-
+    const gunRes = await fetch('/api/gun');
+    const { gun } = await gunRes.json();
+    // console.log(deck, gun);
     if (deck?.pair) {
       setDeckPair(deck?.pair);
+    }
+
+    if (gun) {
+      setUserPair(gun);
     }
   };
 
@@ -90,25 +103,29 @@ export default function AppLayout(props: Props) {
       await initLit();
     }
 
-    if (!deckId || typeof deckId !== 'string') {
-      return;
-    }
-    // setDeckId(deckId);
+    // console.log(notes);
+
+    // console.log(deckPair);
+
+    // if (!deckId || typeof deckId !== 'string') {
+    //   return;
+    // }
+    // // setDeckId(deckId);
 
     const notes = Object.values(store.getState().notes);
     console.log('initData', notes);
 
-    // Redirect to most recent note or first note in database
-    if (router.pathname.match(/^\/app\/[^/]+$/i)) {
-      const openNoteIds = store.getState().openNoteIds;
-      if (openNoteIds.length > 0 && notes && notes.findIndex(note => note.id === openNoteIds[0]) > -1) {
-        router.replace(`/app/${deckId}/note/${openNoteIds[0]}`);
-        return;
-      } else if (notes && notes.length > 0) {
-        router.replace(`/app/${deckId}/note/${notes[0].id}`);
-        return;
-      }
-    }
+    // // Redirect to most recent note or first note in database
+    // if (router.pathname.match(/^\/app\/[^/]+$/i)) {
+    //   const openNoteIds = store.getState().openNoteIds;
+    //   if (openNoteIds.length > 0 && notes && notes.findIndex(note => note.id === openNoteIds[0]) > -1) {
+    //     router.replace(`/app/${deckId}/note/${openNoteIds[0]}`);
+    //     return;
+    //   } else if (notes && notes.length > 0) {
+    //     router.replace(`/app/${deckId}/note/${notes[0].id}`);
+    //     return;
+    //   }
+    // }
 
     if (!notes.length) {
       setIsPageLoaded(true);
@@ -144,11 +161,13 @@ export default function AppLayout(props: Props) {
     if (isLoaded && !user) {
       // Redirect to root page if there is no user logged in
       router.replace('/');
-    } else if (!isPageLoaded && isLoaded && user && notesReady) {
+      // } else if (!isPageLoaded && isLoaded && user && notesReady) {
+    } else if (!isPageLoaded && isLoaded && user) {
       // Initialize data if there is a user and the data has not been initialized yet
       initData();
     }
-  }, [router, user, isLoaded, isPageLoaded, notesReady, initData]);
+    // }, [router, user, isLoaded, isPageLoaded, notesReady, initData]);
+  }, [router, user, isLoaded, isPageLoaded, initData]);
 
   const [isFindOrCreateModalOpen, setIsFindOrCreateModalOpen] = useState(false);
   // const [isSettingsOpen, setIsSettingsOpen] = useState(false);
@@ -181,7 +200,7 @@ export default function AppLayout(props: Props) {
         if (!upsertId || !upsertTitle) return;
         localStorage.removeItem('deck-note-upsert-id');
         localStorage.removeItem('deck-note-upsert-title');
-        upsertDbNote(upsertTitle, upsertId);
+        // upsertDbNote(upsertTitle, upsertId);
       }
     }, 4000);
 

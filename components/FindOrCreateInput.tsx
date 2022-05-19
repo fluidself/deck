@@ -64,10 +64,9 @@ function FindOrCreateInput(props: Props, ref: ForwardedRef<HTMLInputElement>) {
   const onOptionClick = useCallback(
     async (option: Option) => {
       if (!deck) {
+        console.log('no deck');
         return;
       }
-
-      onOptionClickCallback?.();
 
       if (option.type === OptionType.NEW_NOTE) {
         const noteId = await upsertNote(inputText);
@@ -77,8 +76,10 @@ function FindOrCreateInput(props: Props, ref: ForwardedRef<HTMLInputElement>) {
           return;
         }
 
+        onOptionClickCallback?.();
         router.push(`/app/${deck.id}/note/${noteId}`);
       } else if (option.type === OptionType.NOTE) {
+        onOptionClickCallback?.();
         router.push(`/app/${deck.id}/note/${option.id}`);
       } else {
         throw new Error(`Option type ${option.type} is not supported`);

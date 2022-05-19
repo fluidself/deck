@@ -68,8 +68,6 @@ const sortNoteTree = (tree: NoteTreeItem[], notes: Notes, noteSort: Sort): NoteT
     ...item,
     children: sortNoteTree(item.children, notes, noteSort),
   }));
-
-  return newTree;
 };
 
 export default memo(SidebarNotes);
